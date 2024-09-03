@@ -1,0 +1,11 @@
+name: badger_env
+channels:
+  - esri
+  - anaconda
+  - defaults
+dependencies:
+  - python=3.9
+  - arcgis
+  - boto3
+  - pandas
+  - openpyxl

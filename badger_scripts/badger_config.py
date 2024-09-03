@@ -1,0 +1,5 @@
+MAPHUB = 'https://governmentofbc.maps.arcgis.com/home'
+BADGERS_ITEM_ID = 'fa6cde2315764bc0b19af0d78cee5047'
+BADGERS_SIMPCW = '4eaca86f5fbd4cafbea89ac60be157d3'
+EDITED_ITEM_ID = 'fdb949b3807b4837ab77daeb7a737238'
+BUCKET = 'bmrm'
