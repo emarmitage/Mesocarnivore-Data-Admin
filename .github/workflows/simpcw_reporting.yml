@@ -1,0 +1,47 @@
+name: Backup Simpcw Photos
+on:
+  schedule:
+    - cron: '30 9 * * *'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Set up Conda environment
+      uses: conda-incubator/setup-miniconda@v2
+      with:
+        activate-environment: badger_env
+        python-version: 3.9
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        conda env update --file reporting_environment.yaml --name badger_env
+        conda env list
+        conda init bash
+        . ~/.bashrc
+        conda activate badger_env
+        
+    - name: Run script
+      shell: bash
+      env:
+        AGO_USER: ${{secrets.AGO_USER}}
+        AGO_PASS: ${{secrets.AGO_PASS}}
+        OBJ_STORE_USER: ${{secrets.OBJ_STORE_USER}}
+        OBJ_STORE_HOST: ${{secrets.OBJ_STORE_HOST}}
+        OBJ_STORE_API_KEY: ${{secrets.OBJ_STORE_API_KEY}}
+      run: |
+        # you may have to activate the environment before running the 
+        # python script, and you likley need to say python3 vs just python
+        conda init bash
+        . ~/.bashrc
+        conda activate badger_env
+        python3 badger_scripts/simpcw_badger_photos.py
