@@ -11,8 +11,7 @@ import pandas as pd
 def run_app():
     USERNAME = os.environ['AGO_USER']
     PASSWORD = os.environ['AGO_PASS']
-    HOST = os.environ['OBJ_STORE_HOST']
-
+    HOST = os.environ['HOST_URL']
     LAYER_ID = os.environ['HAIR_SNAG_ID']
 
     gis = connect_to_ago(HOST=HOST, USERNAME=USERNAME, PASSWORD=PASSWORD)
