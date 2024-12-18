@@ -1,0 +1,46 @@
+name: Hair Snag Data Admin
+on:
+  schedule:
+    - cron: '30 9 * * 0'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Set up Conda environment
+      uses: conda-incubator/setup-miniconda@v2
+      with:
+        activate-environment: hair_snag_env
+        python-version: 3.9
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        conda env update --file reporting_environment.yaml --name hair_snag_env
+        conda env list
+        conda init bash
+        . ~/.bashrc
+        conda activate hair_snag_env
+        
+    - name: Run script
+      shell: bash
+      env:
+        AGO_USER: ${{secrets.AGO_USER}}
+        AGO_PASS: ${{secrets.AGO_PASS}}
+        HOST_URL: ${{secrets.HOST_URL}}
+        HAIR_SNAG_ID: ${{secrets.HAIR_SNAG_ID}}
+      run: |
+        # you may have to activate the environment before running the 
+        # python script, and you likley need to say python3 vs just python
+        conda init bash
+        . ~/.bashrc
+        conda activate hair_snag_env
+        python3 fisher_scripts/hair_snag_data_modification.py
