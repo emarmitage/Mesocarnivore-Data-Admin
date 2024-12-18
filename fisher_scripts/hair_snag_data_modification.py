@@ -24,7 +24,7 @@ def connect_to_ago(HOST, USERNAME, PASSWORD):
     """
     Connects to AGOL
     """
-    gis = GIS(HOST, USERNAME, PASSWORD, verify_cert=False)
+    gis = GIS(HOST, USERNAME, PASSWORD)
 
     if gis.users.me:
         logging.info('..successfully connect to AGOL as {gis.users.me.username}')
