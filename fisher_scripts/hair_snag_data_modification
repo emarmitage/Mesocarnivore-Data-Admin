@@ -9,11 +9,11 @@ from copy import deepcopy
 import pandas as pd
 
 def run_app():
-    USERNAME = ''
-    PASSWORD = ''
-    HOST = ''
+    USERNAME = os.environ['AGO_USER']
+    PASSWORD = os.environ['AGO_PASS']
+    HOST = os.environ['OBJ_STORE_HOST']
 
-    LAYER_ID = ''
+    LAYER_ID = os.environ['HAIR_SNAG_ID']
 
     gis = connect_to_ago(HOST=HOST, USERNAME=USERNAME, PASSWORD=PASSWORD)
     ago_flayer, flayer_properties, flayer_data, tbl_cubby_check, cubby_check_query, cubby_check_data = get_feature_layer_data(ago_layer_id=LAYER_ID, gis=gis)
