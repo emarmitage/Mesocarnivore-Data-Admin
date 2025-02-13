@@ -1,6 +1,6 @@
 # Purpose: Rename photos collected from Field Maps. Update status in point feature layer with status from the most recent related record
 # Author: Emma Armitage
-# Last edit date: 2024-12-18
+# Last edit date: 2025-02-13
 
 from arcgis.gis import GIS
 import logging
@@ -9,6 +9,10 @@ from copy import deepcopy
 import pandas as pd
 
 def run_app():
+
+    # set logging level
+    logging.basicConfig(level=logging.INFO)
+
     USERNAME = os.environ['AGO_USER']
     PASSWORD = os.environ['AGO_PASS']
     HOST = os.environ['HOST_URL']
@@ -17,6 +21,7 @@ def run_app():
     gis = connect_to_ago(HOST=HOST, USERNAME=USERNAME, PASSWORD=PASSWORD)
     ago_flayer, flayer_properties, flayer_data, tbl_cubby_check, cubby_check_query, cubby_check_data = get_feature_layer_data(ago_layer_id=LAYER_ID, gis=gis)
     update_cubby_status(ago_flayer=ago_flayer, flayer_data=flayer_data, tbl_cubby_check=tbl_cubby_check)
+    cubby_check_complete(ago_flayer=ago_flayer, flayer_data=flayer_data, tbl_cubby_check=tbl_cubby_check)
     rename_cubby_loc_attachments(ago_flayer=ago_flayer, flayer_properties=flayer_properties, flayer_data=flayer_data)
     rename_cubby_check_attachments(tbl_cubby_check=tbl_cubby_check, check_properties=cubby_check_query, check_data=cubby_check_data)
 
@@ -27,7 +32,7 @@ def connect_to_ago(HOST, USERNAME, PASSWORD):
     gis = GIS(HOST, USERNAME, PASSWORD)
 
     if gis.users.me:
-        logging.info('..successfully connect to AGOL as {gis.users.me.username}')
+        logging.info(f'..successfully connect to AGOL as {gis.users.me.username}')
     else:
         logging.error('..connection to AGOL failed')
 
@@ -68,11 +73,11 @@ def update_cubby_status(ago_flayer, flayer_data, tbl_cubby_check):
         if len(cubby_check_subset) == 0:
             continue
 
-        lst_check_nums = cubby_check_subset.sdf['SITE_CHECK_ID'].tolist()
+        sorted_checks = cubby_check_subset.sdf.sort_values(by='START_DATE', ascending=False)
 
-        latest_check = cubby_check_subset.sdf.loc[cubby_check_subset.sdf['SITE_CHECK_ID'] == lst_check_nums[-1]]
+        latest_check = sorted_checks.iloc[0]
 
-        check_status = latest_check.iloc[0]['SITE_STATUS']
+        check_status = latest_check['SITE_STATUS']
 
         if cubby_loc_status != check_status:
             original_feature = [f for f in flayer_data if f.attributes['SITE_ID'] == site_id][0]
@@ -81,7 +86,46 @@ def update_cubby_status(ago_flayer, flayer_data, tbl_cubby_check):
             features_for_update.append(feature_to_update)
 
     if features_for_update:
-        logging.info(f"Updating {len(features_for_update)} cubby locations")
+        logging.info(f"Updating {len(features_for_update)} cubby locations' status")
+        ago_flayer.edit_features(updates=features_for_update)
+
+def cubby_check_complete(ago_flayer, flayer_data, tbl_cubby_check):
+    logging.info('Updating cubby location as complete if cubby check complete')
+
+    # list containing corrected features
+    features_for_update = []
+
+    for cubby in flayer_data:
+
+        # get the cubby location unique id
+        site_id = cubby.attributes['SITE_ID']
+
+        # get the cubby location completion status
+        cubby_loc_complete = cubby.attributes['CHECK_COMPLETE']
+
+        # query cubby checks associated with SITE_ID
+        cubby_subset = tbl_cubby_check.query(where=f"SITE_ID = \'{site_id}\'")
+
+        # if there are no cubby checks, skip that feature
+        if len(cubby_subset) == 0:
+            continue
+
+        sorted_checks = cubby_subset.sdf.sort_values(by='START_DATE', ascending=False)
+
+        latest_check = sorted_checks.iloc[0]
+
+        check_complete = latest_check['CHECK_COMPLETE']
+
+        # if the completion statuses, differ, update the cubby location with the most recent check completion status
+        if cubby_loc_complete != check_complete:
+            original_feature = [f for f in flayer_data if f.attributes['SITE_ID'] == site_id][0]
+            feature_to_update = deepcopy(original_feature)
+            feature_to_update.attributes['CHECK_COMPLETE'] = check_complete
+            features_for_update.append(feature_to_update)
+
+    # update the feature layer if there are edits
+    if features_for_update:
+        logging.info(f"Updating {len(features_for_update)} cubby locations' completion status")
         ago_flayer.edit_features(updates=features_for_update)
 
 def rename_cubby_loc_attachments(ago_flayer, flayer_properties, flayer_data):
@@ -118,6 +162,7 @@ def rename_file(file_path: str, new_name: str):
     return new_path
 
 def rename_attachments(oid_list, layer, flayer_data, get_id):
+    logging.info("Renaming attachments")
     features_for_update = [] 
 
     for oid in oid_list:
@@ -195,6 +240,9 @@ def rename_attachments(oid_list, layer, flayer_data, get_id):
     # apply edits to the photo_name field in the AGO feature layer
     if features_for_update:
         layer.edit_features(updates=features_for_update)
+        
+if __name__ == '__main__':
+    run_app()
         
 if __name__ == '__main__':
     run_app()
