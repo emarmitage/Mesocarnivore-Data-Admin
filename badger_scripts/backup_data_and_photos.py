@@ -5,12 +5,14 @@ Includes a function to rename attachments
 Written to run in GitHub Actions
 
 Author: Emma Armitage (some code adapted from Graydon Shevchenko)
-Aug 29, 2024
+Updated: Feb 14 2025
 
 """
 # imports 
 import os
-import boto3
+from minio import Minio
+from minio.deleteobjects import DeleteObject
+from  minio.error import S3Error
 from arcgis.gis import GIS 
 from copy import deepcopy
 import json
@@ -18,6 +20,8 @@ from datetime import datetime, timezone
 from io import BytesIO
 
 import badger_config
+
+# actually need to convert dates to ISO 8601 format
 
 def run_app():
 
@@ -81,16 +85,13 @@ class BadgerBackupData:
         print("Connection successful")
 
         print("Connecting to object storage")
-        self.boto_resource = boto3.resource(service_name='s3',
-                                            aws_access_key_id=self.obj_store_user,
-                                            aws_secret_access_key=self.obj_store_api_key,
-                                            endpoint_url=f'https://{self.object_store_host}')
+        self.s3_connection = Minio(obj_store_host, obj_store_user, obj_store_api_key)
         
     def __del__(self) -> None:
         print("Disconnecting from MapHub")
         del self.gis
         print("Closing object storage connection")
-        del self.boto_resource 
+        # del self.boto_resource 
 
     # get feature layer data
     def get_feature_layer_data(self, ago_layer_id, edited_ago_layer_id, layer_name):
@@ -258,10 +259,10 @@ class BadgerBackupData:
 
         Returns: list of object storage contents
         """
-        obj_bucket = self.boto_resource.Bucket(self.badger_bucket)
-        lst_objects = []
-        for obj in obj_bucket.objects.all():
-            lst_objects.append(os.path.basename(obj.key))
+
+        objects = self.s3_connection.list_objects(bucket_name=self.badger_bucket, prefix="badger_sightings_photos", recursive=True)
+
+        lst_objects = [os.path.basename(obj.object_name) for obj in objects]
 
         return lst_objects
         
@@ -329,20 +330,15 @@ class BadgerBackupData:
                         attach_id = attach['id']
                         attach_file = ago_flayer.attachments.download(oid=oid, attachment_id=attach_id)[0]
 
-                        if os.path.exists(attach_file):
-                            print(f"path exists: {attach_file}")
-                            ostore_path = f"{self.bucket_prefix}/{attach['name']}"
+                        ostore_path = f"{self.bucket_prefix}/{attach['name']}"
 
-                            try:
-    
-                                self.boto_resource.meta.client.upload_file(attach_file, self.badger_bucket, ostore_path)
-                                print(f"Successfully uploaded {attach['name']} to {ostore_path}")
+                        # Upload the file to MinIO bucket
+                        try:
+                            self.s3_connection.fput_object(self.badger_bucket, ostore_path, attach_file)
+                            print(f"File {attach['name']} uploaded successfully to {self.badger_bucket}/{ostore_path}")
+                        except S3Error as e:
+                            print(f"Error uploading file {attach['name']} to MinIO: {e}")
 
-                            except Exception as e:
-                                print(f"Failed to upload {attach['name']} due to {e}")
-
-                        else:
-                            print(f"Invalid file path: {attach_file}")
     
     def convert_flayer_to_geojson(self, flayer_data):
         """
@@ -380,9 +376,7 @@ class BadgerBackupData:
                         ]
                     },
                     "properties": {
-                        key: convert_timestamp(key, value, unit='milliseconds') 
-                        for key, value in feature.attributes.items()
-                        if key != "SHAPE" 
+                        key: convert_timestamp(key, value, unit='milliseconds') for key, value in feature.attributes.items()
                     }
                 }
                 for feature in flayer_data
@@ -400,7 +394,7 @@ class BadgerBackupData:
         """
         print("Saving GeoJSON to object storage")
 
-        now = datetime.now().strftime("%d-%m-%Y")
+        now = datetime.now().strftime("%Y-%m-%d")
 
         if counter == 1:
 
@@ -411,12 +405,27 @@ class BadgerBackupData:
 
         bucket_name = self.badger_bucket
 
+        # delete existing data in the bucket
+        objects = self.s3_connection.list_objects(bucket_name=self.badger_bucket, prefix="backup_data", recursive=True)
+
+        lst_objects = [obj.object_name for obj in objects if obj.last_modified != now]
+
+        for delete_obj in lst_objects:
+
+            self.s3_connection.remove_object(bucket_name, delete_obj)
+
+
+        # upload geojson file
         try:
             geojson_data = BytesIO(geojson.encode('utf-8'))
-            s3_object = self.boto_resource.Object(bucket_name, ostore_path)
-            s3_object.put(
-                Body=geojson_data,
-                ContentType='application/geo+json'
+
+            self.s3_connection.put_object(
+                bucket_name=bucket_name,
+                object_name=ostore_path,
+                data=geojson_data,
+                length=-1,
+                part_size=5 * 1024 * 1024, # 5MB
+                content_type='application/geo+json'
             )
             print(f"GeoJSON data has been uploaded to s3://{bucket_name}/{ostore_path}")
         except Exception as e:
