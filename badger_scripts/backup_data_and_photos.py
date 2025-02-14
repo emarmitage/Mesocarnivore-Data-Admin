@@ -408,7 +408,7 @@ class BadgerBackupData:
         # delete existing data in the bucket
         objects = self.s3_connection.list_objects(bucket_name=self.badger_bucket, prefix="backup_data", recursive=True)
 
-        lst_objects = [obj.object_name for obj in objects if obj.last_modified != now]
+        lst_objects = [obj.object_name for obj in objects if obj.last_modified.date() != now]
 
         for delete_obj in lst_objects:
 
