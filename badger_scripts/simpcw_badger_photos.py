@@ -47,8 +47,8 @@ class BadgerReport:
         self.ago_badgers_simpcw = badger_config.BADGERS_SIMPCW
 
         self.badger_bucket = badger_config.BUCKET
-        self.bucket_prefix = "Simpcw_Badger_Data"
-        self.bucket_subfolder = "Simpcw_Badger_Photos"
+        self.bucket_prefix = "simpcw_badger_data"
+        self.bucket_subfolder = "simpcw_badger_photos"
 
         print("Connecting to MapHub")
         self.gis = GIS(url=self.portal_url, username=self.ago_user, password=self.ago_pass, expiration=9999)
