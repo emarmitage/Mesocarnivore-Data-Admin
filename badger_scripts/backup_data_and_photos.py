@@ -341,8 +341,11 @@ class BadgerBackupData:
                         attach_id = attach['id']
                         attach_file = ago_flayer.attachments.download(oid=oid, attachment_id=attach_id)[0]
 
+                        print(type(attach_file))
+
                         # if the file is a ByteIO object, use upload_fileobj
                         if isinstance(attach_file, BytesIO):
+                            print("BytesIO")
 
                             ostore_path = f"{self.bucket_prefix}/{attach['name']}"
                             
@@ -350,7 +353,7 @@ class BadgerBackupData:
                             s3_client.upload_fileobj(attach_file, self.badger_bucket, ostore_path)
 
                         else:
-
+                            print("File Path")
                             ostore_path = f"{self.bucket_prefix}/{attach['name']}"
 
                             self.boto_resource.meta.client.upload_file(attach_file, self.badger_bucket, ostore_path)
