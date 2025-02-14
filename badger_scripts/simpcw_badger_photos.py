@@ -1,5 +1,6 @@
 import os
-import boto3
+from minio import Minio
+from minio.error import S3Error
 from arcgis.gis import GIS 
 
 import badger_config
@@ -46,18 +47,20 @@ class BadgerReport:
         self.ago_badgers_simpcw = badger_config.BADGERS_SIMPCW
 
         self.badger_bucket = badger_config.BUCKET
-        self.bucket_prefix = "simpcw_badger_data"
-        self.bucket_subfolder = "simpcw_badger_photos"
+        self.bucket_prefix = "Simpcw_Badger_Data"
+        self.bucket_subfolder = "Simpcw_Badger_Photos"
 
         print("Connecting to MapHub")
         self.gis = GIS(url=self.portal_url, username=self.ago_user, password=self.ago_pass, expiration=9999)
         print("Connection successful")
 
         print("Connecting to object storage")
-        self.boto_resource = boto3.resource(service_name='s3',
-                                            aws_access_key_id=self.obj_store_user,
-                                            aws_secret_access_key=self.obj_store_api_key,
-                                            endpoint_url=f'https://{self.object_store_host}')
+        # self.boto_resource = boto3.resource(service_name='s3',
+        #                                     aws_access_key_id=self.obj_store_user,
+        #                                     aws_secret_access_key=self.obj_store_api_key,
+        #                                     endpoint_url=f'https://{self.object_store_host}')
+        self.s3_connection = Minio(obj_store_host, obj_store_user, obj_store_api_key)
+
         
     def __del__(self) -> None:
         print("Disconnecting from MapHub")
@@ -66,13 +69,18 @@ class BadgerReport:
         del self.boto_resource 
         
     def list_contents(self) -> list:
-        obj_bucket = self.boto_resource.Bucket(self.badger_bucket)
+        # obj_bucket = self.boto_resource.Bucket(self.badger_bucket)
         folder_path = os.path.join(self.bucket_prefix, self.bucket_subfolder)
 
-        lst_objects = []
-        # get the objects in the bucket, filtering by the desired path
-        for obj in obj_bucket.objects.filter(Prefix=folder_path):
-            lst_objects.append(os.path.basename(obj.key))
+        # lst_objects = []
+        # # get the objects in the bucket, filtering by the desired path
+        # for obj in obj_bucket.objects.filter(Prefix=folder_path):
+        #     lst_objects.append(os.path.basename(obj.key))
+
+        objects = self.s3_connection.list_objects(bucket_name=self.badger_bucket, prefix="folder_path", recursive=True)
+
+        lst_objects = [os.path.basename(obj.object_name) for obj in objects]
+        print(lst_objects)
 
         return lst_objects
         
@@ -148,7 +156,14 @@ class BadgerReport:
                         attach_file = ago_flayer.attachments.download(oid=oid, attachment_id=attach_id)[0]
                         ostore_path = f"{self.bucket_prefix}/{self.bucket_subfolder}/{attach['name']}"
 
-                        self.boto_resource.meta.client.upload_file(attach_file, self.badger_bucket, ostore_path)
+                        # self.boto_resource.meta.client.upload_file(attach_file, self.badger_bucket, ostore_path)
+
+                                                # Upload the file to MinIO bucket
+                        try:
+                            self.s3_connection.fput_object(self.badger_bucket, ostore_path, attach_file)
+                            print(f"File {attach['name']} uploaded successfully to {self.badger_bucket}/{ostore_path}")
+                        except S3Error as e:
+                            print(f"Error uploading file {attach['name']} to MinIO: {e}")
 
 
 
