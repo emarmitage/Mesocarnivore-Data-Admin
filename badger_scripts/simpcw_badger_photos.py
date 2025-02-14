@@ -55,10 +55,6 @@ class BadgerReport:
         print("Connection successful")
 
         print("Connecting to object storage")
-        # self.boto_resource = boto3.resource(service_name='s3',
-        #                                     aws_access_key_id=self.obj_store_user,
-        #                                     aws_secret_access_key=self.obj_store_api_key,
-        #                                     endpoint_url=f'https://{self.object_store_host}')
         self.s3_connection = Minio(obj_store_host, obj_store_user, obj_store_api_key)
 
         
@@ -66,21 +62,14 @@ class BadgerReport:
         print("Disconnecting from MapHub")
         del self.gis
         print("Closing object storage connection")
-        del self.boto_resource 
+        del self.s3_connection
         
     def list_contents(self) -> list:
-        # obj_bucket = self.boto_resource.Bucket(self.badger_bucket)
         folder_path = os.path.join(self.bucket_prefix, self.bucket_subfolder)
 
-        # lst_objects = []
-        # # get the objects in the bucket, filtering by the desired path
-        # for obj in obj_bucket.objects.filter(Prefix=folder_path):
-        #     lst_objects.append(os.path.basename(obj.key))
-
-        objects = self.s3_connection.list_objects(bucket_name=self.badger_bucket, prefix="folder_path", recursive=True)
+        objects = self.s3_connection.list_objects(bucket_name=self.badger_bucket, prefix=folder_path, recursive=True)
 
         lst_objects = [os.path.basename(obj.object_name) for obj in objects]
-        print(lst_objects)
 
         return lst_objects
         
@@ -156,9 +145,7 @@ class BadgerReport:
                         attach_file = ago_flayer.attachments.download(oid=oid, attachment_id=attach_id)[0]
                         ostore_path = f"{self.bucket_prefix}/{self.bucket_subfolder}/{attach['name']}"
 
-                        # self.boto_resource.meta.client.upload_file(attach_file, self.badger_bucket, ostore_path)
-
-                                                # Upload the file to MinIO bucket
+                        # Upload the file to MinIO bucket
                         try:
                             self.s3_connection.fput_object(self.badger_bucket, ostore_path, attach_file)
                             print(f"File {attach['name']} uploaded successfully to {self.badger_bucket}/{ostore_path}")
