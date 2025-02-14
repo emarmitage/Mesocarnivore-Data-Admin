@@ -320,18 +320,6 @@ class BadgerBackupData:
                 if not lst_new_pictures:
                     continue 
 
-                # # iterate through each attachment item
-                # for attach in lst_attachments:
-
-                #     # if the attachment's name is in the list of new pictures, copy the item to the object storage bucket
-                #     if attach['name'] in lst_new_pictures:
-                #         print(f"Copying {attach['name']} to object storage")
-                #         attach_id = attach['id']
-                #         attach_file = ago_flayer.attachments.download(oid=oid, attachment_id=attach_id)[0]
-                #         ostore_path = f"{self.bucket_prefix}/{attach['name']}"
-
-                #         self.boto_resource.meta.client.upload_file(attach_file, self.badger_bucket, ostore_path)
-
                 # iterate through each attachment item
                 for attach in lst_attachments:
 
@@ -341,22 +329,20 @@ class BadgerBackupData:
                         attach_id = attach['id']
                         attach_file = ago_flayer.attachments.download(oid=oid, attachment_id=attach_id)[0]
 
-                        print(type(attach_file))
-
-                        # if the file is a ByteIO object, use upload_fileobj
-                        if isinstance(attach_file, BytesIO):
-                            print("BytesIO")
-
+                        if os.path.exists(attach_file):
+                            print(f"path exists: {attach_file}")
                             ostore_path = f"{self.bucket_prefix}/{attach['name']}"
-                            
-                            # upload the file-like object to S3
-                            s3_client.upload_fileobj(attach_file, self.badger_bucket, ostore_path)
+
+                            try:
+    
+                                self.boto_resource.meta.client.upload_file(attach_file, self.badger_bucket, ostore_path)
+                                print(f"Successfully uploaded {attach['name']} to {ostore_path}")
+
+                            except Exception as e:
+                                print(f"Failed to upload {attach['name']} due to {e}")
 
                         else:
-                            print("File Path")
-                            ostore_path = f"{self.bucket_prefix}/{attach['name']}"
-
-                            self.boto_resource.meta.client.upload_file(attach_file, self.badger_bucket, ostore_path)
+                            print(f"Invalid file path: {attach_file}")
     
     def convert_flayer_to_geojson(self, flayer_data):
         """
