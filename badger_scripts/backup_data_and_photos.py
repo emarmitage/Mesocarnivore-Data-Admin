@@ -320,6 +320,18 @@ class BadgerBackupData:
                 if not lst_new_pictures:
                     continue 
 
+                # # iterate through each attachment item
+                # for attach in lst_attachments:
+
+                #     # if the attachment's name is in the list of new pictures, copy the item to the object storage bucket
+                #     if attach['name'] in lst_new_pictures:
+                #         print(f"Copying {attach['name']} to object storage")
+                #         attach_id = attach['id']
+                #         attach_file = ago_flayer.attachments.download(oid=oid, attachment_id=attach_id)[0]
+                #         ostore_path = f"{self.bucket_prefix}/{attach['name']}"
+
+                #         self.boto_resource.meta.client.upload_file(attach_file, self.badger_bucket, ostore_path)
+
                 # iterate through each attachment item
                 for attach in lst_attachments:
 
@@ -328,9 +340,20 @@ class BadgerBackupData:
                         print(f"Copying {attach['name']} to object storage")
                         attach_id = attach['id']
                         attach_file = ago_flayer.attachments.download(oid=oid, attachment_id=attach_id)[0]
-                        ostore_path = f"{self.bucket_prefix}/{attach['name']}"
 
-                        self.boto_resource.meta.client.upload_file(attach_file, self.badger_bucket, ostore_path)
+                        # if the file is a ByteIO object, use upload_fileobj
+                        if isinstance(attach_file, BytesIO):
+
+                            ostore_path = f"{self.bucket_prefix}/{attach['name']}"
+                            
+                            # upload the file-like object to S3
+                            s3_client.upload_fileobj(attach_file, self.badger_bucket, ostore_path)
+
+                        else:
+
+                            ostore_path = f"{self.bucket_prefix}/{attach['name']}"
+
+                            self.boto_resource.meta.client.upload_file(attach_file, self.badger_bucket, ostore_path)
     
     def convert_flayer_to_geojson(self, flayer_data):
         """
