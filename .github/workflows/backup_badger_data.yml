@@ -31,7 +31,7 @@ jobs:
         . ~/.bashrc
         conda activate badger_env
         
-    - name: Run script
+    - name: Run Scripts
       shell: bash
       env:
         AGO_USER: ${{secrets.AGO_USER}}
@@ -45,4 +45,8 @@ jobs:
         conda init bash
         . ~/.bashrc
         conda activate badger_env
-        python3 badger_scripts/backup_data_and_photos.py
+          conda activate badger_env
+          python3 badger_scripts/backup_data_and_photos.py
+          python3 badger_scripts/append_data_to_editing_flayer.py
+          python3 badger_scripts/simpcw_badger_photos.py
+    
