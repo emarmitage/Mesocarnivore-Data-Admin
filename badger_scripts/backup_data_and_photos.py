@@ -2,10 +2,10 @@
 Backup AGO Data and Attachments Script
 Backs up AGO feature layer data as geojson and attachments to object storage
 Includes a function to rename attachments 
-Written to run in GitHub Actions
+Runs in GitHub Actions
 
 Author: Emma Armitage (some code adapted from Graydon Shevchenko)
-Updated: Feb 14 2025
+Updated: March 03 2025
 
 """
 # imports 
@@ -16,8 +16,9 @@ from  minio.error import S3Error
 from arcgis.gis import GIS 
 from copy import deepcopy
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta, date
 from io import BytesIO
+import re
 
 import badger_config
 
@@ -394,25 +395,38 @@ class BadgerBackupData:
         """
         print("Saving GeoJSON to object storage")
 
-        now = datetime.now().strftime("%Y-%m-%d")
+        # now = datetime.now().strftime("%Y-%m-%d")
+        today = date.today()
+        thirty_days_ago = today - timedelta(days=30)
 
         if counter == 1:
 
-            ostore_path = f'backup_data/survey123_raw_backup_data_{now}.geojson'
+            ostore_path = f'backup_data/survey123_raw_backup_data_{today}.geojson'
 
         else:
-            ostore_path = f'backup_data/survey123_edited_backup_data_{now}.geojson'
+            ostore_path = f'backup_data/survey123_edited_backup_data_{today}.geojson'
 
         bucket_name = self.badger_bucket
 
         # delete existing data in the bucket
         objects = self.s3_connection.list_objects(bucket_name=self.badger_bucket, prefix="backup_data", recursive=True)
 
-        lst_objects = [obj.object_name for obj in objects if obj.last_modified.date() != now]
+        lst_objects = [obj.object_name for obj in objects]
+        
+        # list for files older that 30 days 
+        lst_old_objs = []
+        
+        for obj in lst_objects:
+            match = re.search(r"\d{4}-\d{2}-\d{2}", obj)
+            extracted_date = datetime.strptime(match.group(), "%Y-%m-%d").date()
 
-        for delete_obj in lst_objects:
+            if extracted_date < thirty_days_ago:
+                lst_old_objs.append(obj)
+
+        for delete_obj in lst_old_objs:
 
             self.s3_connection.remove_object(bucket_name, delete_obj)
+            print(f"..{delete_obj} successfully deleted")
 
 
         # upload geojson file
