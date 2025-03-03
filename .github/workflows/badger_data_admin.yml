@@ -1,4 +1,4 @@
-name: Badger Backup Data and Photos
+name: Badger Data Admin
 
 on:
   schedule:
