@@ -1,0 +1,45 @@
+name: Badger Camera Check Admin
+
+on:
+  schedule: 
+    - cron: 0 0 * * * # every day at midnight
+  workflow dispatch: 
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3-11'
+
+    - name: Set up Conda environment
+      uses: conda-incubator/setup-miniconda@v2
+      with:
+        activate-environment: badger_env
+        python-version: 3.11
+      
+    - name: Install dependencies
+      shell: bash
+      run: |
+        conda env update --file reporting_environment.yaml --name badger_cam_env
+        conda env list
+        conda activate badger_env
+
+    - name: Run Script
+      shell: bash
+      env:
+        USERNAME = ${{ secrets.AGO_USER }}
+        PASSWORD = ${{ secrets.AGO_PASS }}
+        URL = ${{ secrets.MAPHUB_URL }}
+        CAMERA_CHECK_ITEM_ID = ${{ secrets.BADGER_CAM_CHECK_ID }}
+
+      run: |
+        conda activate badger_cam_env
+        python3 badger_scripts/camera_check_data_admin.py
+        
+  
