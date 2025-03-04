@@ -6,18 +6,11 @@ from datetime import datetime, date
 
 def run_app():
     
-    # runs in local environment
-    USERNAME = os.environ.get('AGO_USERNAME')
-    PASSWORD = os.environ.get('AGO_PASSWORD')
+    # allows script to run locally and in github actions workflow
+    USERNAME = os.environ.get('AGO_USER') or os.environ.get('AGO_USERNAME')
+    PASSWORD = os.environ.get('AGO_PASS') or os.environ.get('AGO_PASSWORD')
     URL = os.environ.get('MAPHUB_URL')
     CAMERA_CHECK_ITEM_ID = os.environ.get('BADGER_CAM_CHECK_ID')
-
-    # runs in github actions workflow
-    if not all ([USERNAME, PASSWORD, URL, CAMERA_CHECK_ITEM_ID]):
-        USERNAME = os.environ['AGO_USER']
-        PASSWORD = os.environ['AGO_PASS']
-        URL = os.environ['MAPHUB_URL']
-        CAMERA_CHECK_ITEM_ID = os.environ['BADGER_CAM_CHECK_ID']
         
     logging.basicConfig(level=logging.INFO, format='%(message)s')
 
