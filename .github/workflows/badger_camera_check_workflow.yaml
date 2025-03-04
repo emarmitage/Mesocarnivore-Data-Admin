@@ -35,10 +35,10 @@ jobs:
     - name: Run Script
       shell: bash
       env:
-        USERNAME: ${{ secrets.AGO_USER }}
-        PASSWORD: ${{ secrets.AGO_PASS }}
-        URL: ${{ secrets.MAPHUB_URL }}
-        CAMERA_CHECK_ITEM_ID: ${{ secrets.BADGER_CAM_CHECK_ID }}
+        AGO_USER: ${{ secrets.AGO_USER }}
+        AGO_PASS: ${{ secrets.AGO_PASS }}
+        MAPHUB_URL: ${{ secrets.MAPHUB_URL }}
+        BADGER_CAM_CHECK_ID: ${{ secrets.BADGER_CAM_CHECK_ID }}
 
       run: |
         conda init bash
