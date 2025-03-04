@@ -40,6 +40,7 @@ jobs:
         CAMERA_CHECK_ITEM_ID: ${{ secrets.BADGER_CAM_CHECK_ID }}
 
       run: |
+        conda init bash
         conda activate badger_cam_env
         python3 badger_scripts/camera_check_data_admin.py
         
