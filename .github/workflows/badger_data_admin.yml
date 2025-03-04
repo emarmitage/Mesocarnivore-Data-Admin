@@ -44,7 +44,6 @@ jobs:
         # python script, and you likley need to say python3 vs just python
         conda init bash
         . ~/.bashrc
-        conda activate badger_env
           conda activate badger_env
           python3 badger_scripts/backup_data_and_photos.py
           python3 badger_scripts/append_data_to_editing_flayer.py
