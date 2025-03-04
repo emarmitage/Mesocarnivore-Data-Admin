@@ -5,14 +5,15 @@ import os
 from datetime import datetime, date
 
 def run_app():
+    
+    # runs in local environment
+    USERNAME = os.environ.get('AGO_USERNAME')
+    PASSWORD = os.environ.get('AGO_PASSWORD')
+    URL = os.environ.get('MAPHUB_URL')
+    CAMERA_CHECK_ITEM_ID = os.environ.get('BADGER_CAM_CHECK_ID')
 
-    try: 
-        USERNAME = os.environ.get('AGO_USERNAME')
-        PASSWORD = os.environ.get('AGO_PASSWORD')
-        URL = os.environ.get('MAPHUB_URL')
-        CAMERA_CHECK_ITEM_ID = os.environ.get('BADGER_CAM_CHECK_ID')
-
-    except:
+    # runs in github actions workflow
+    if not all ([USERNAME, PASSWORD, URL, CAMERA_CHECK_ITEM_ID]):
         USERNAME = os.environ['AGO_USER']
         PASSWORD = os.environ['AGO_PASS']
         URL = os.environ['MAPHUB_URL']
