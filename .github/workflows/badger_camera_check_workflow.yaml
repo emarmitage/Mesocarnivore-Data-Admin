@@ -20,7 +20,7 @@ jobs:
     - name: Set up Conda environment
       uses: conda-incubator/setup-miniconda@v2
       with:
-        activate-environment: badger_env
+        activate-environment: badger_cam_env
         python-version: 3.11
       
     - name: Install dependencies
