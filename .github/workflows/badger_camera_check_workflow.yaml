@@ -15,7 +15,7 @@ jobs:
 
     - uses: actions/setup-python@v4
       with:
-        python-version: '3-11'
+        python-version: '3.11'
 
     - name: Set up Conda environment
       uses: conda-incubator/setup-miniconda@v2
@@ -33,10 +33,10 @@ jobs:
     - name: Run Script
       shell: bash
       env:
-        USERNAME = ${{ secrets.AGO_USER }}
-        PASSWORD = ${{ secrets.AGO_PASS }}
-        URL = ${{ secrets.MAPHUB_URL }}
-        CAMERA_CHECK_ITEM_ID = ${{ secrets.BADGER_CAM_CHECK_ID }}
+        USERNAME: ${{ secrets.AGO_USER }}
+        PASSWORD: ${{ secrets.AGO_PASS }}
+        URL: ${{ secrets.MAPHUB_URL }}
+        CAMERA_CHECK_ITEM_ID: ${{ secrets.BADGER_CAM_CHECK_ID }}
 
       run: |
         conda activate badger_cam_env
