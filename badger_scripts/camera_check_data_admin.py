@@ -7,10 +7,12 @@ from datetime import datetime, date
 def run_app():
     
     # allows script to run locally and in github actions workflow
-    USERNAME = os.environ.get('AGO_USER') or os.environ.get('AGO_USERNAME')
-    PASSWORD = os.environ.get('AGO_PASS') or os.environ.get('AGO_PASSWORD')
-    URL = os.environ.get('MAPHUB_URL')
-    CAMERA_CHECK_ITEM_ID = os.environ.get('BADGER_CAM_CHECK_ID')
+    print(os.environ)
+    
+    USERNAME = os.environ['AGO_USER']
+    PASSWORD = os.environ['AGO_PASS']
+    URL = os.environ['MAPHUB_URL']
+    CAMERA_CHECK_ITEM_ID = os.environ['BADGER_CAM_CHECK_ID']
         
     logging.basicConfig(level=logging.INFO, format='%(message)s')
 
