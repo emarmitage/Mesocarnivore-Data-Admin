@@ -411,28 +411,23 @@ class BadgerBackupData:
         # delete existing data in the bucket
         objects = self.s3_connection.list_objects(bucket_name=self.badger_bucket, prefix="backup_data", recursive=True)
 
-        print(objects)
-
         lst_objects = [obj.object_name for obj in objects]
-
-        print(lst_objects)
         
         # list for files older that 30 days 
         lst_old_objs = []
         
         for obj in lst_objects:
-            print(obj)
             match = re.search(r"\d{4}-\d{2}-\d{2}", obj)
-            print(match)
-            extracted_date = datetime.strptime(match.group(), "%Y-%m-%d").date()
 
-            if extracted_date < thirty_days_ago:
-                lst_old_objs.append(obj)
+            if match == None:
+                print(f"..no match found for object {obj}")
+                continue
 
-        for delete_obj in lst_old_objs:
+            else:
+                extracted_date = datetime.strptime(match.group(), "%Y-%m-%d").date()
 
-            self.s3_connection.remove_object(bucket_name, delete_obj)
-            print(f"..{delete_obj} successfully deleted")
+                if extracted_date < thirty_days_ago:
+                    lst_old_objs.append(obj)
 
 
         # upload geojson file
