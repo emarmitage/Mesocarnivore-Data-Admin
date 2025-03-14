@@ -2,7 +2,6 @@ name: badger_export_env
 channels:
   - esri
   - conda-forge
-  - anaconda
   - defaults
 dependencies:
   - python=3.11
