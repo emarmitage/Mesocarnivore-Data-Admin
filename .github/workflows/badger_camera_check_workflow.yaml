@@ -1,4 +1,4 @@
-name: Badger Culvert Assessment Admin
+name: Badger Camera Check Admin
 
 on:
   schedule: 
@@ -20,17 +20,16 @@ jobs:
     - name: Set up Conda environment
       uses: conda-incubator/setup-miniconda@v2
       with:
-        activate-environment: badger_assess_env
+        activate-environment: badger_cam_env
         python-version: 3.11
       
     - name: Install dependencies
       shell: bash
       run: |
-        conda env update --file reporting_environment.yaml --name badger_assess_env
+        conda env update --file reporting_environment.yaml --name badger_cam_env
         conda env list
         conda init bash
-        . ~/.bashrc
-        conda activate badger_assess_env
+        conda activate badger_cam_env
 
     - name: Run Script
       shell: bash
@@ -38,10 +37,11 @@ jobs:
         AGO_USER: ${{ secrets.AGO_USER }}
         AGO_PASS: ${{ secrets.AGO_PASS }}
         MAPHUB_URL: ${{ secrets.MAPHUB_URL }}
-        BADGER_CAM_CHECK_ID: ${{ secrets.BADGER_CULVERT_ITEM_ID }}
+        BADGER_CAM_CHECK_ID: ${{ secrets.BADGER_CAM_CHECK_ID }}
 
       run: |
         conda init bash
-        . ~/.bashrc
-        conda activate badger_assess_env
-        python3 badger_scripts/culvert_assessment_data_admin.py
+        conda activate badger_cam_env
+        python3 badger_scripts/camera_check_data_admin.py
+        
+  
