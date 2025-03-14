@@ -242,27 +242,33 @@ def get_culvert_assessment_data(gis, culvert_item_id, start_date, end_date, init
     # convert to spatial data frame
     culvert_assessment_sdf = culvert_assessment_data.sdf
 
-    # Strip time from DATE_ASSESSED
-    culvert_assessment_sdf['DATE_ASSESSED'] = culvert_assessment_sdf['DATE_ASSESSED'].dt.normalize()
+    if len(culvert_assessment_sdf) != 0:
+        print(f"..initial query returned {len(culvert_assessment_sdf)} features")
+        # Strip time from DATE_ASSESSED
+        culvert_assessment_sdf['DATE_ASSESSED'] = culvert_assessment_sdf['DATE_ASSESSED'].dt.normalize()
 
-    # convert to timezone aware columns and query for date range
-    if culvert_assessment_sdf['DATE_ASSESSED'].dt.tz is None:
-        culvert_assessment_sdf['DATE_ASSESSED'] = culvert_assessment_sdf['DATE_ASSESSED'].dt.tz_localize('UTC')    
-    culvert_assessment_sdf['DATE_ASSESSED'] = culvert_assessment_sdf['DATE_ASSESSED'].dt.tz_convert('US/Pacific')
+        # convert to timezone aware columns and query for date range
+        if culvert_assessment_sdf['DATE_ASSESSED'].dt.tz is None:
+            culvert_assessment_sdf['DATE_ASSESSED'] = culvert_assessment_sdf['DATE_ASSESSED'].dt.tz_localize('UTC')    
+        culvert_assessment_sdf['DATE_ASSESSED'] = culvert_assessment_sdf['DATE_ASSESSED'].dt.tz_convert('US/Pacific')
 
-    # Ensure start and end dates are timezone-aware (in 'US/Pacific')
-    start_date_pst = pd.to_datetime(start_date).tz_localize('US/Pacific', ambiguous='NaT')
-    end_date_pst = pd.to_datetime(end_date).tz_localize('US/Pacific', ambiguous='NaT')
+        # Ensure start and end dates are timezone-aware (in 'US/Pacific')
+        start_date_pst = pd.to_datetime(start_date).tz_localize('US/Pacific', ambiguous='NaT')
+        end_date_pst = pd.to_datetime(end_date).tz_localize('US/Pacific', ambiguous='NaT')
 
-    # Filter records within the date range
-    culvert_assessment_df = culvert_assessment_sdf[
-        (culvert_assessment_sdf['DATE_ASSESSED'] >= start_date_pst) & 
-        (culvert_assessment_sdf['DATE_ASSESSED'] <= end_date_pst)
-    ]
+        # Filter records within the date range
+        culvert_assessment_df = culvert_assessment_sdf[
+            (culvert_assessment_sdf['DATE_ASSESSED'] >= start_date_pst) & 
+            (culvert_assessment_sdf['DATE_ASSESSED'] <= end_date_pst)
+        ]
+
+    else:
+        culvert_assessment_data = []
+        culvert_loc_df = []
 
     # check if there are features
     if len(culvert_assessment_df) != 0:
-        print(f"..query returned {len(culvert_assessment_df)} features")
+        print(f"..date query returned {len(culvert_assessment_df)} features")
 
         # get the objectids to query related records
         culvert_assessment_oids = culvert_assessment_df['OBJECTID'].tolist()
