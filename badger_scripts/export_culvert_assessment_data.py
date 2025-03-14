@@ -241,7 +241,6 @@ def get_culvert_assessment_data(gis, culvert_item_id, start_date, end_date, init
 
     # convert to spatial data frame
     culvert_assessment_sdf = culvert_assessment_data.sdf
-    print(culvert_assessment_sdf)
 
     if len(culvert_assessment_sdf) != 0:
         print(f"..initial query returned {len(culvert_assessment_sdf)} features")
@@ -263,50 +262,50 @@ def get_culvert_assessment_data(gis, culvert_item_id, start_date, end_date, init
             (culvert_assessment_sdf['DATE_ASSESSED'] <= end_date_pst)
         ]
 
-    else:
-        culvert_assessment_data = []
-        culvert_loc_df = []
+        # check if there are features
+        if len(culvert_assessment_df) != 0:
+            print(f"..date query returned {len(culvert_assessment_df)} features")
 
-    # check if there are features
-    if len(culvert_assessment_df) != 0:
-        print(f"..date query returned {len(culvert_assessment_df)} features")
+            # get the objectids to query related records
+            culvert_assessment_oids = culvert_assessment_df['OBJECTID'].tolist()
 
-        # get the objectids to query related records
-        culvert_assessment_oids = culvert_assessment_df['OBJECTID'].tolist()
+            # convert list of oids to correct format to query related records
+            oids_string = ",".join(map(str, culvert_assessment_oids))
 
-        # convert list of oids to correct format to query related records
-        oids_string = ",".join(map(str, culvert_assessment_oids))
+            # query culvert assessment data
+            oid_query = f"OBJECTID = {oids_string}"
+            culvert_assessment_data_filtered = culvert_table.query(where=oid_query)
 
-        # query culvert assessment data
-        oid_query = f"OBJECTID = {oids_string}"
-        culvert_assessment_data_filtered = culvert_table.query(where=oid_query)
+            # query related records
+            print("..querying related culvert locations")
+            related_points = culvert_table.query_related_records(object_ids=f'{oids_string}', relationship_id=0, out_fields=["*"], return_geometry=True)
 
-        # query related records
-        print("..querying related culvert locations")
-        related_points = culvert_table.query_related_records(object_ids=f'{oids_string}', relationship_id=0, out_fields=["*"], return_geometry=True)
+            # get the relatedRecordGroups from the related_data dictionary and extract the attributes
+            related_record_groups = (related_points['relatedRecordGroups'])
 
-        # get the relatedRecordGroups from the related_data dictionary and extract the attributes
-        related_record_groups = (related_points['relatedRecordGroups'])
+            # Extract the attributes
+            related_data = []
+            related_geometries = []
 
-        # Extract the attributes
-        related_data = []
-        related_geometries = []
+            for group in related_record_groups:
+                for record in group.get('relatedRecords', []):
+                    attributes = record.get('attributes', {})
+                    geometry = record.get('geometry', {})
 
-        for group in related_record_groups:
-            for record in group.get('relatedRecords', []):
-                attributes = record.get('attributes', {})
-                geometry = record.get('geometry', {})
+                    related_data.append(attributes)
+                    # Convert geometry to Shapely Point
+                    point = Point(geometry['x'], geometry['y'])
+                    related_geometries.append(point)
 
-                related_data.append(attributes)
-                # Convert geometry to Shapely Point
-                point = Point(geometry['x'], geometry['y'])
-                related_geometries.append(point)
+            # convert list of attributes to a dataframe
+            culvert_loc_df = pd.DataFrame(related_data)
 
-        # convert list of attributes to a dataframe
-        culvert_loc_df = pd.DataFrame(related_data)
+            # add geometry column
+            culvert_loc_df['geometry'] = related_geometries
 
-        # add geometry column
-        culvert_loc_df['geometry'] = related_geometries
+        else:
+            culvert_assessment_data = []
+            culvert_loc_df = []
 
     else:
         culvert_assessment_data = []
