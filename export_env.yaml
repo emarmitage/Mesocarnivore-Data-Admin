@@ -10,5 +10,4 @@ dependencies:
   - shapely
   - simplekml
   - minio
-  - pyt
   
