@@ -1,0 +1,14 @@
+name: badger_export_env
+channels:
+  - esri
+  - anaconda
+  - defaults
+dependencies:
+  - python=3.11
+  - arcgis
+  - geopandas
+  - shapely
+  - simplekml
+  - minio
+  - pyt
+  
