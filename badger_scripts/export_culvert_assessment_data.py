@@ -241,6 +241,7 @@ def get_culvert_assessment_data(gis, culvert_item_id, start_date, end_date, init
 
     # convert to spatial data frame
     culvert_assessment_sdf = culvert_assessment_data.sdf
+    print(culvert_assessment_sdf)
 
     if len(culvert_assessment_sdf) != 0:
         print(f"..initial query returned {len(culvert_assessment_sdf)} features")
