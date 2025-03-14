@@ -12,7 +12,6 @@ import shutil
 from minio import Minio
 import smtplib, urllib
 from datetime import datetime
-import pytz
 from email.message import EmailMessage
 
 def main():
@@ -236,20 +235,20 @@ def get_culvert_assessment_data(gis, culvert_item_id, start_date, end_date, init
     culvert_table = culvert_item.tables[0]
 
     # query culvert assessments for initials and date range
-    # query = f"UPPER(assessor_name) LIKE UPPER('%{initials}%') and (date_assessed >= TIMESTAMP '{start_date} 00:00:00' and date_assessed <= TIMESTAMP '{end_date} 23:59:59')"
-    query = f"UPPER(assessor_name) LIKE UPPER('%{initials}%')"
+    # query = f"UPPER(ASSESSOR_INITIALS) LIKE UPPER('%{initials}%') and (DATE_ASSESSED >= TIMESTAMP '{start_date} 00:00:00' and DATE_ASSESSED <= TIMESTAMP '{end_date} 23:59:59')"
+    query = f"UPPER(ASSESSOR_INITIALS) LIKE UPPER('%{initials}%')"
     culvert_assessment_data = culvert_table.query(where=query)
 
     # convert to spatial data frame
     culvert_assessment_sdf = culvert_assessment_data.sdf
 
-    # Strip time from date_assessed
-    culvert_assessment_sdf['date_assessed'] = culvert_assessment_sdf['date_assessed'].dt.normalize()
+    # Strip time from DATE_ASSESSED
+    culvert_assessment_sdf['DATE_ASSESSED'] = culvert_assessment_sdf['DATE_ASSESSED'].dt.normalize()
 
     # convert to timezone aware columns and query for date range
-    if culvert_assessment_sdf['date_assessed'].dt.tz is None:
-        culvert_assessment_sdf['date_assessed'] = culvert_assessment_sdf['date_assessed'].dt.tz_localize('UTC')    
-    culvert_assessment_sdf['date_assessed'] = culvert_assessment_sdf['date_assessed'].dt.tz_convert('US/Pacific')
+    if culvert_assessment_sdf['DATE_ASSESSED'].dt.tz is None:
+        culvert_assessment_sdf['DATE_ASSESSED'] = culvert_assessment_sdf['DATE_ASSESSED'].dt.tz_localize('UTC')    
+    culvert_assessment_sdf['DATE_ASSESSED'] = culvert_assessment_sdf['DATE_ASSESSED'].dt.tz_convert('US/Pacific')
 
     # Ensure start and end dates are timezone-aware (in 'US/Pacific')
     start_date_pst = pd.to_datetime(start_date).tz_localize('US/Pacific', ambiguous='NaT')
@@ -257,8 +256,8 @@ def get_culvert_assessment_data(gis, culvert_item_id, start_date, end_date, init
 
     # Filter records within the date range
     culvert_assessment_df = culvert_assessment_sdf[
-        (culvert_assessment_sdf['date_assessed'] >= start_date_pst) & 
-        (culvert_assessment_sdf['date_assessed'] <= end_date_pst)
+        (culvert_assessment_sdf['DATE_ASSESSED'] >= start_date_pst) & 
+        (culvert_assessment_sdf['DATE_ASSESSED'] <= end_date_pst)
     ]
 
     # check if there are features
@@ -326,20 +325,20 @@ def download_to_other_spatial_format(culvert_loc_df, culvert_assessment_data, da
 
     print("..cleaning and formatting fields")
     # format times and convert to correct time zone
-    culvert_gdf['date_time_created'] = pd.to_datetime(culvert_gdf['date_time_created'],unit='ms')
+    culvert_gdf['DATE_TIME_CREATED'] = pd.to_datetime(culvert_gdf['DATE_TIME_CREATED'],unit='ms')
 
     print("...converting timestamps")
-    if culvert_gdf['date_time_created'].dt.tz is None:
-        culvert_gdf['date_time_created'] = culvert_gdf['date_time_created'].dt.tz_localize('UTC')    
-    culvert_gdf['date_time_created'] = culvert_gdf['date_time_created'].dt.tz_convert('US/Pacific')
-    culvert_gdf['date_time_created'] = culvert_gdf['date_time_created'].dt.strftime('%Y-%m-%d %H:%M:%S')
+    if culvert_gdf['DATE_TIME_CREATED'].dt.tz is None:
+        culvert_gdf['DATE_TIME_CREATED'] = culvert_gdf['DATE_TIME_CREATED'].dt.tz_localize('UTC')    
+    culvert_gdf['DATE_TIME_CREATED'] = culvert_gdf['DATE_TIME_CREATED'].dt.tz_convert('US/Pacific')
+    culvert_gdf['DATE_TIME_CREATED'] = culvert_gdf['DATE_TIME_CREATED'].dt.strftime('%Y-%m-%d %H:%M:%S')
 
     # columns to drop
-    assessment_drop_cols = ['secondary_farm', 'secondary_drainage', 'secondary_wildlife', 
-                            'secondary_pedestrian', 'secondary_unknown', 'tracks_through_culvert', 'tracks_perpendicular',
-                            'tracks_15m', 'tracks_people', 'tracks_animals', 'tracks_livestock', 'tracks_vandalism', 'tracks_no_sign',
+    assessment_drop_cols = ['SECONDARY_FARM', 'SECONDARY_DRAINAGE', 'SECONDARY_WILDLIFE', 
+                            'SECONDARY_PEDESTRIAN', 'SECONDARY_UNKNOWN', 'TRACKS_THROUGH_CULVERT', 'TRACKS_PERPENDICULAR',
+                            'TRACKS_15M', 'TRACKS_PEOPLE', 'TRACKS_ANIMALS', 'TRACKS_LIVESTOCK', 'TRACKS_VANDALISM', 'TRACKS_NO_SIGN',
                             'GlobalID', 'CreationDate', 'Creator', 'EditDate', 'Editor']
-    point_drop_cols = ['GlobalID', 'CreationDate', 'Creator', 'EditDate', 'Editor']
+    point_drop_cols = ['GlobalID', 'CreationDate', 'Creator', 'EditDate', 'Editor', 'LANDSCAPE_CONNECT', 'MACHINE_EXCAV_REQ','UNDERPASS_PRIORITY']
     
     print("...dropping columns")
     # drop unnecessary columns from both dataframes
@@ -348,43 +347,63 @@ def download_to_other_spatial_format(culvert_loc_df, culvert_assessment_data, da
     
     # rename columns for readability
     point_mapper = {
-        "structure_number" : "CHRIS Culvert ID",
-        "assessor_name": "Assessor Name(s)",
-        "date_time_created": "Date and Time",
-        "traffic_direction": "Highway Traffic Direction",
-        "cardinal_dirction": "Cardinal Direction",
-        "found_culvert": "Could Not Find CHRIS Culvert",
-        "Status": "Status",
-        "delete_point": "Delete Point"
+        "SITE_ID": "Culvert Location ID",
+        "RECORD_CHRIS_ID": "Record CHRIS ID?",
+        "CHRIS_ID": "CHRIS Culvert ID",
+        "RECORD_BMIS_ID": "Record BMIS ID?",
+        "BMIS_ID": "BMIS ID",
+        "RECORD_RAIL_ID": "Record Rail ID?",
+        "RAIL_ID": "RAIL ID",
+        "ASSESSOR_INITIALS": "Assessor Initials(s)",
+        "DATE_TIME_CREATED": "Date and Time",
+        "TRAFFIC_DIRECTION": "Highway Traffic Direction",
+        "CARDINAL_DIRECTION": "Cardinal Direction",
+        "LATITUDE": "Latitude",
+        "LONGITUDE": "Longitude",
+        "PHOTO_NAME": "Photo Name(s)",
+        "FLAG_CULVERT_DISCREPANCY": "Flag CHRIS Disscrepancy",
+        "CHRIS_CULVERT_MISSING": "Culvert Missing In CHRIS",
+        "FIELD_CULVERT_MISSING": "Culvert Missing In The Field",
+        "SUSPECTED_CHRIS_ID": "Suspected CHRIS ID",
+        "COMMENTS": "Comments",
+        "STATUS": "Status",
+        "DELETE_POINT": "Delete Point",
     }
 
     table_mapper = {
-        "assessor_name": "Assessor Name(s)",
-        "date_assessed": "Date",
-        "structure_number": "CHRIS Culvert ID",
-        "structure_type": "Structure Type",
-        "structure_size": "Structure Size (cm)",
-        "main_function": "Main Function",
-        "secondary_function": "Secondary Function(s)",
-        "structure_functional": "Functional",
-        "landscape_connect": "Local Landscape Connectivity",
-        "riparian_corridor": "Riparian Corridor",
-        "rail_coupling": "Rail Coupling Nearby",
-        "seasonal_flow": "Seasonal Flow",
-        "passable": "Passable",
-        "openness": "Openness (%)",
-        "underpass_visibility": "Visibility Through Underpass",
-        "moisture": "Moisure",
-        "water_depth": "Water Depth (cm)",
-        "tracks_signs": "Tracks & Sign",
-        "tracks_signs_describe": "Describe Tracks & Sign",
-        "hand_excav_req": "Hand Excavation Required",
-        "machine_excav_req": "Machine Excavation Required",
-        "camera_install": "Camera Installation Possible",
-        "camera_theft": "Camera Theft Potential",
-        "camera_suitability": "Overall Camera Suitability",
-        "underpass_priority": "Potential Underpass Priority",
-        "comments": "Comments"
+        "SITE_ID": "Culvert Location ID",
+        "SITE_ASSESS_ID": "Culvert Assessment ID",
+        "ASSESSOR_INITIALS": "Assessor Name(s)",
+        "DATE_ASSESSED": "Date",
+        "RECORD_CHRIS_ID": "Record CHRIS ID?",
+        "CHRIS ID": "CHRIS ID",
+        "SPECIES_GUILD": "Species Guild",
+        "STRUCTURE_TYPE": "Structure Type",
+        "STRUCTURE_SIZE_CM": "Structure Size (cm)",
+        "STRUCTURE_SIZE_MM": "Structure Size (mm)",
+        "MAIN_FUNCTION": "Main Function",
+        "SECONDARY_FUNCTION": "Secondary Function(s)",
+        "STRUCTURE_FUNCTIONAL": "Functional",
+        "LANDSCAPE_CONNECT": "Local Landscape Connectivity",
+        "RIPARIAN_CORRIDOR": "Riparian Corridor",
+        "RAIL_COUPLING": "Rail Coupling Nearby",
+        "SEASONAL_FLOW": "Seasonal Flow",
+        "GRATE": "Grate",
+        "PASSABLE": "Passable",
+        "OPENNESS": "Openness (%)",
+        "UNDERPASS_VISIBILITY": "Visibility Through Underpass",
+        "MOISTURE": "Moisure",
+        "WATER_DEPTH": "Water Depth (cm)",
+        "TRACKS_SIGNS": "Tracks & Sign",
+        "TRACKS_SIGNS_DESCRIBE": "Describe Tracks & Sign",
+        "HAND_EXCAV_REQ": "Hand Excavation Required",
+        "MACHINE_EXCAV_REQ": "Machine Excavation Required",
+        "CAMERA_INSTALL": "Camera Installation Possible",
+        "CAMERA_THEFT": "Camera Theft Potential",
+        "CAMERA_SUITABILITY": "Overall Camera Suitability",
+        "UNDERPASS_PRIORITY": "Potential Underpass Priority",
+        "PHOTO_NAME": "Photo Name(s)",
+        "COMMENTS": "Comments"
     }
 
     point_col_order = list(point_mapper.values())
