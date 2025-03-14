@@ -1,0 +1,53 @@
+name: Badger Culvert exportment Admin
+
+on:
+  schedule: 
+    - cron: '0,15,30,45 14-23 * * *'  # Runs every 15 minutes from 7 AM to 6 PM PST
+  workflow_dispatch: 
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Set up Conda environment
+      uses: conda-incubator/setup-miniconda@v2
+      with:
+        activate-environment: badger_export_env
+        python-version: 3.11
+      
+    - name: Install dependencies
+      shell: bash
+      run: |
+        conda env update --file export_env.yaml --name badger_export_env
+        conda env list
+        conda init bash
+        . ~/.bashrc
+        conda activate badger_export_env
+
+    - name: Run Script
+      shell: bash
+      env:
+        AGO_USER: ${{ secrets.AGO_USER }}
+        AGO_PASS: ${{ secrets.AGO_PASS }}
+        MAPHUB_URL: ${{ secrets.MAPHUB_URL }}
+        BADGER_CULVERT_ITEM_ID: ${{ secrets.BADGER_CULVERT_ITEM_ID }}
+        REQUEST_BADGER_DATA_ITEM_ID: ${{ secrets.REQUEST_BADGER_DATA_ITEM_ID }}
+        OBJ_STORE_USER: ${{secrets.OBJ_STORE_USER}}
+        OBJ_STORE_HOST: ${{secrets.OBJ_STORE_HOST}}
+        OBJ_STORE_API_KEY: ${{secrets.OBJ_STORE_API_KEY}}
+
+      run: |
+        conda init bash
+        . ~/.bashrc
+        conda activate badger_export_env
+        python3 badger_scripts/export_culvert_assessment_data.py
+        
+  
