@@ -29,6 +29,7 @@ jobs:
         conda env update --file reporting_environment.yaml --name badger_assess_env
         conda env list
         conda init bash
+        . ~/.bashrc
         conda activate badger_assess_env
 
     - name: Run Script
@@ -41,6 +42,7 @@ jobs:
 
       run: |
         conda init bash
+        . ~/.bashrc
         conda activate badger_assess_env
         python3 badger_scripts/culvert_assessment_data_admin.py
         
