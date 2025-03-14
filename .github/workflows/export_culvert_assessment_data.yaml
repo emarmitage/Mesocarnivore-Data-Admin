@@ -1,9 +1,9 @@
 name: Survey123 Action
 
 on:
-  webhook:
+  repository_dispatch:
     types:
-      - survey123
+      - webhook
 
 jobs:
   process_survey_data:
