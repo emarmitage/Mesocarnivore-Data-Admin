@@ -306,10 +306,12 @@ def get_culvert_assessment_data(gis, culvert_item_id, start_date, end_date, init
         else:
             culvert_assessment_data = []
             culvert_loc_df = []
+            culvert_assessment_data_filtered = []
 
     else:
         culvert_assessment_data = []
         culvert_loc_df = []
+        culvert_assessment_data_filtered = []
 
     return culvert_flayer, culvert_table, culvert_assessment_data_filtered, culvert_loc_df
 
