@@ -38,7 +38,7 @@ jobs:
         AGO_USER: ${{ secrets.AGO_USER }}
         AGO_PASS: ${{ secrets.AGO_PASS }}
         MAPHUB_URL: ${{ secrets.MAPHUB_URL }}
-        BADGER_CAM_CHECK_ID: ${{ secrets.BADGER_CULVERT_ITEM_ID }}
+        CULVERT_ITEM_ID: ${{ secrets.BADGER_CULVERT_ITEM_ID }}
 
       run: |
         conda init bash
