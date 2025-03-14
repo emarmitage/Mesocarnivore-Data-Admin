@@ -1,37 +1,47 @@
-name: Badger Culvert Assessment Data Admin
+name: Badger Culvert Assessment Admin
 
 on:
-  schedule:
-      - cron: 0 4 * * * # every day at 4am PST
-  workflow_dispatch:
+  schedule: 
+    - cron: 0 4 * * * # every day at 4am PST
+  workflow_dispatch: 
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
-    env:
-      AGO_USER: ${{ secrets.AGO_USER }}
-      AGO_PASS: ${{ secrets.AGO_PASS }}
-      MAPHUB_URL: ${{ secrets.MAPHUB_URL }}
-      CULVERT_ITEM_ID: ${{ secrets.BADGER_CULVERT_ITEM_ID }}
-
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
-    - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/checkout@v2
+
+    - uses: actions/setup-python@v4
       with:
-        python-version: '3.11.11'
-    - name: Install libkrb5 for Kerberos on Linux
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y krb5-user libkrb5-dev
+        python-version: '3.11'
+
+    - name: Set up Conda environment
+      uses: conda-incubator/setup-miniconda@v2
+      with:
+        activate-environment: badger_assess_env
+        python-version: 3.11
+      
     - name: Install dependencies
+      shell: bash
       run: |
-        python -m pip install --upgrade pip
-        pip install -r reporting_environment.yaml
-    - name: Run Badger Culvert Assessment Workflow
-      run: badger_scripts/culvert_assessment_data_admin.py
+        conda env update --file reporting_environment.yaml --name badger_assess_env
+        conda env list
+        conda init bash
+        conda activate badger_assess_env
 
+    - name: Run Script
+      shell: bash
+      env:
+        AGO_USER: ${{ secrets.AGO_USER }}
+        AGO_PASS: ${{ secrets.AGO_PASS }}
+        MAPHUB_URL: ${{ secrets.MAPHUB_URL }}
+        BADGER_CAM_CHECK_ID: ${{ secrets.BADGER_CULVERT_ITEM_ID }}
 
-
+      run: |
+        conda init bash
+        conda activate badger_assess_env
+        python3 badger_scripts/culvert_assessment_data_admin.py
+        
+  
