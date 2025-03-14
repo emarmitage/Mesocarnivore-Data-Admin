@@ -1,4 +1,4 @@
-name: Badger Culvert exportment Admin
+name: Export Culvert Assessment Data
 
 on:
   schedule: 
