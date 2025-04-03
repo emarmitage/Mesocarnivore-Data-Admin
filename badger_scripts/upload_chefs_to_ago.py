@@ -38,23 +38,23 @@ def main():
     # set the logging level & configure message format
     logging.basicConfig(level=logging.INFO, format="%(message)s")
 
-    API_KEY = "" # api key
-    BASE_URL = "" 
-    FORM_ID = "" # form ID
-    VERSION_ID = "" # form version 12
+    API_KEY = os.environ['CHEFS_API_KEY'] # api key
+    BASE_URL = os.environ['CHEFS_BASE_URL']
+    FORM_ID = os.environ['CHEFS_FORM_ID'] # form ID
+    VERSION_ID = os.environ['CHEFS_VERSION_ID'] # form version 12
     REQUEST_FIELDS = "confirmationId,createdAt,first_name,last_name,email,sighting_date,sighting_type,sighting_type_other,number_badgers,badger_status,in_conflict,road_location,obs_type,family_at_burrow,location_type,ground_squirrels,additional_info,upload_image,image_permission,unique_id,sighting_location,latitude,longitude,point_accuracy,referral_source,social_media_source,referral_source_other"
     HTTP_POOL_MANAGER = urllib3.PoolManager()
 
     # input parameters
     AGO_USER = os.environ['AGO_USER']
     AGO_PASS = os.environ['AGO_PASS']
-    MAPHUB_URL = os.environ['']
-    AGO_ITEM_ID = ''
-    SIMPCW_ITEM_ID = ''
+    MAPHUB_URL = os.environ['MAPHUB_URL']
+    AGO_ITEM_ID = os.environ['BADGER_SIGHTINGS_AGO_ITEM']
+    SIMPCW_ITEM_ID = os.environ['SIMPCW_BADGER_SIGHTINGS_AGO_ITEM']
     USERNAME = os.environ['OBJ_STORE_USER']
     ENDPOINT = os.environ['OBJ_STORE_HOST']
     SECRET = os.environ['OBJ_STORE_API_KEY']
-    S3_BUCKET = ''
+    S3_BUCKET = os.environ['BADGER_S3_BUCKET']
 
     # current year for naming & querying
     year = pd.to_datetime('today').year
