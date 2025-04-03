@@ -46,14 +46,14 @@ def main():
     HTTP_POOL_MANAGER = urllib3.PoolManager()
 
     # input parameters
-    AGO_USER = os.getenv('AGO_USERNAME')
-    AGO_PASS = os.getenv('AGO_PASSWORD')
-    MAPHUB_URL = os.getenv('MAPHUB')
+    AGO_USER = os.environ['AGO_USER']
+    AGO_PASS = os.environ['AGO_PASS']
+    MAPHUB_URL = os.environ['']
     AGO_ITEM_ID = ''
     SIMPCW_ITEM_ID = ''
-    USERNAME = ''
-    ENDPOINT = ''
-    SECRET = ''
+    USERNAME = os.environ['OBJ_STORE_USER']
+    ENDPOINT = os.environ['OBJ_STORE_HOST']
+    SECRET = os.environ['OBJ_STORE_API_KEY']
     S3_BUCKET = ''
 
     # current year for naming & querying
