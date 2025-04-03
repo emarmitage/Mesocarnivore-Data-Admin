@@ -36,15 +36,25 @@ jobs:
       env:
         AGO_USER: ${{secrets.AGO_USER}}
         AGO_PASS: ${{secrets.AGO_PASS}}
+        MAPHUB_URL: ${{secrets.MAPHUB_URL}}
         OBJ_STORE_USER: ${{secrets.OBJ_STORE_USER}}
         OBJ_STORE_HOST: ${{secrets.OBJ_STORE_HOST}}
         OBJ_STORE_API_KEY: ${{secrets.OBJ_STORE_API_KEY}}
+        BADGER_S3_BUCKET: ${{secrets.BADGER_S3_BUCKET}}
+        BADGER_SIGHTINGS_AGO_ITEM: ${{secrets.BADGER_SIGHTINGS_AGO_ITEM}}
+        SIMPCW_BADGER_SIGHTINGS_AGO_ITEM: ${{secrets.SIMPCW_BADGER_SIGHTINGS_AGO_ITEM}}
+        CHEFS_API_KEY: ${{secrets.CHEFS_API_KEY}}
+        CHEFS_BASE_URL: ${{secrets.CHEFS_BASE_URL}}
+        CHEFS_FORM_ID: ${{secrets.CHEFS_FORM_ID}}
+        CHEFS_VERSION_ID: ${{secrets.CHEFS_VERSION_ID}}
+        
       run: |
         # you may have to activate the environment before running the 
         # python script, and you likley need to say python3 vs just python
         conda init bash
         . ~/.bashrc
           conda activate badger_env
+          python3 badger_scripts/upload_chefs_to_ago.py
           python3 badger_scripts/backup_data_and_photos.py
           python3 badger_scripts/append_data_to_editing_flayer.py
           python3 badger_scripts/simpcw_badger_photos.py
