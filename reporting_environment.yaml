@@ -9,3 +9,4 @@ dependencies:
   - minio
   - pandas
   - openpyxl
+  - urllib3
