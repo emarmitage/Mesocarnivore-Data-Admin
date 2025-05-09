@@ -5,7 +5,7 @@ Includes a function to rename attachments
 Runs in GitHub Actions
 
 Author: Emma Armitage (some code adapted from Graydon Shevchenko)
-Updated: March 03 2025
+Updated: May 09 2025
 
 """
 # imports 
