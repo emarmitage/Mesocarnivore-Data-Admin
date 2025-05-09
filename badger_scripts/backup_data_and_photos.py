@@ -205,12 +205,13 @@ class BadgerBackupData:
         def convert_timestamp(key, value, unit='milliseconds'):
             if key in ['survey_start', 'survey_end', 'CreationDate', 'EditDate']:
                 try:
-                    # Convert milliseconds to seconds if needed
-                    if unit == 'milliseconds':
-                        value = value / 1000
-                    
-                    formatted_date = datetime.fromtimestamp(value, tz=timezone.utc).isoformat()
-                    return formatted_date
+                    if value is not None:
+                        # Convert milliseconds to seconds if needed
+                        if unit == 'milliseconds':
+                            value = value / 1000
+                        
+                        formatted_date = datetime.fromtimestamp(value, tz=timezone.utc).isoformat()
+                        return formatted_date
                 except (OSError, OverflowError, ValueError):
                     return value
                     
