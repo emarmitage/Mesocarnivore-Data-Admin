@@ -55,7 +55,7 @@ jobs:
         . ~/.bashrc
           conda activate badger_env
           python3 badger_scripts/upload_chefs_to_ago.py
-          python3 badger_scripts/backup_data_and_photos.py
+          # python3 badger_scripts/backup_data_and_photos.py
           python3 badger_scripts/append_data_to_editing_flayer.py
-          python3 badger_scripts/simpcw_badger_photos.py
+          # python3 badger_scripts/simpcw_badger_photos.py
     
