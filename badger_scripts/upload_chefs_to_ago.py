@@ -56,11 +56,10 @@ def main():
     SECRET = os.environ['OBJ_STORE_API_KEY']
     S3_BUCKET = os.environ['BADGER_S3_BUCKET']
 
-    # current year for naming & querying
+        # current year for naming & querying
     year = pd.to_datetime('today').year
 
-    # QUERY = """ unique_id IS NOT NULL"""
-    QUERY = f""" sighting_date_response LIKE '%{year}%' AND unique_id IS NOT NULL """
+    QUERY = f""" CreationDate >= '{year}-01-01' AND unique_id IS NOT NULL """
 
     # drop columns from feature layer sdf
     flayer_drop_columns = ['objectid', 'globalid', 'sighting_date', 'survey_start', 'survey_end', 'CreationDate', 'Creator', 'EditDate', 'Editor', 'badger_photo_header', 'Form_Header_1', 'Form_Header_2', 'Form_Description', 'badger_status_note', 'road_mortality_note', 'duplicate_sighting', 'social_media_source_other', 'SHAPE']
@@ -94,6 +93,13 @@ def main():
         edit_ago_data(ago_records_for_update, new_records_for_ago, survey123_layer, survey123_properties)
 
         logging.info(f'\nGetting updated data from AGOL')
+        updated_ago_layer, updated_ago_properties, updated_ago_features, updated_ago_sdf, simpcw_sdf = get_updated_ago_data(gis, AGO_ITEM_ID, SIMPCW_ITEM_ID, QUERY)
+
+        logging.info(f'\nCleaning AGOL data')
+        logging.info(f'..finding records to remove from AGOL - either blank or duplicate records')
+        remove_ago_duplicates_and_blanks(updated_ago_layer, updated_ago_sdf)
+
+        logging.info(f'\nGetting updated data from AGOL after removing duplicates and blanks')
         updated_ago_layer, updated_ago_properties, updated_ago_features, updated_ago_sdf, simpcw_sdf = get_updated_ago_data(gis, AGO_ITEM_ID, SIMPCW_ITEM_ID, QUERY)
 
         logging.info(f'\nRenaming AGO feature layer attachments')
@@ -347,8 +353,8 @@ def format_data_for_ago(df):
     if not df.empty:
         logging.info('....formatting CHEFS data for AGOL')
         # convert to datetime format
-        df['sighting_date_y'] = pd.to_datetime(df['sighting_date_y'], errors='coerce').dt.tz_convert('UTC')
-        # df['survey_start'] = pd.to_datetime(df['survey_start'], errors='coerce').dt.tz_convert('UTC')
+        df['sighting_date_y'] = pd.to_datetime(df['sighting_date_y'], errors='coerce', utc=True)
+
         for column, data in df.items():
             if column in map_dict.keys():
                 # find data value in map_dict keys for the given column. Update the column with the mapped value
@@ -388,6 +394,7 @@ def edit_ago_data(ago_records_for_update, new_records_for_ago, survey123_layer, 
     if not ago_records_for_update.empty:
         # iterate through the features
         for feature in original_features:
+
             # get the unique_id from the feature
             unique_id = feature.attributes['unique_id']
 
@@ -396,22 +403,28 @@ def edit_ago_data(ago_records_for_update, new_records_for_ago, survey123_layer, 
 
             # update the feature's geometry and attributes
             if not df_record.empty:
-                for index, row in df_record.iterrows():
+                for _, row in df_record.iterrows():
+
+                    updated_attributes = feature.attributes.copy()
+
+                    updated_attributes.update({
+                        column.replace('_y', ''): row[column] for column in df_record.columns if column.endswith("_y")
+                    })
+
                     updated_feature = {
-                        "attributes": {
-                            column.replace('_y', ''): row[column] for column in df_record.columns if column.endswith("_y")
-                        },
+                        "attributes" : updated_attributes,
                         "geometry": {
                             "x": row['longitude_y'],
                             "y": row['latitude_y']
-                        }
+                        }   
                     }
-
-                # preserve other attributes
-                updated_feature['attributes'].update(feature.attributes)
 
                 # update sighting_date_response
                 updated_feature['attributes']['sighting_date_response'] = row['sighting_date_y'].strftime('%Y-%m-%d')
+                updated_feature['attributes']['sighting_date'] = row['sighting_date_y'].strftime('%Y-%m-%d')
+
+                # update CHEFS confirmation ID
+                updated_feature['attributes']['chefs_confirmation_id'] = row.get('confirmationId')
 
                 # add the updated feature to the list
                 features_to_edit.append(updated_feature)
@@ -427,26 +440,32 @@ def edit_ago_data(ago_records_for_update, new_records_for_ago, survey123_layer, 
 
     # append only new CHEFS records to the feature layer
     if not new_records_for_ago.empty:
+
         # filter out records with unique_ids that already exist in AGOL
         new_records_for_ago = new_records_for_ago[~new_records_for_ago['unique_id'].isin(existing_unique_ids)]
 
+        # select only the columns that end with "_y"
+        y_columns = [col for col in new_records_for_ago.columns if col.endswith('_y') or col in ['sighting_date_response', 'unique_id', 'chefs_confirmation_id', 'survey_start_date_time', 'confirmationId', 'survey_start']]
+        attributes_df = new_records_for_ago[y_columns]
+
+        # rename the columns to remove the "_y" suffix
+        attributes_df.columns = [col.replace('_y', '') for col in attributes_df.columns]
+
         # create a dictionary for the new feature
-        for index, row in new_records_for_ago.iterrows():
-            # new feature dictionary
+        for _, row in attributes_df.iterrows():
             new_feature = {
-                "attributes": {
-                    column.replace('_y', ''): row[column] for column in new_records_for_ago.columns if column.endswith('_y')
-                },
+                "attributes": row.to_dict(),
                 "geometry": {
-                    "x": row['longitude_y'],
-                    "y": row['latitude_y']
+                    "x": row['longitude'],
+                    "y": row['latitude']
                 }
             }
 
-            # Handle 'sighting_date_y' if it exists
-            sighting_date = row.get('sighting_date_y')
+            # Handle 'sighting_date' if it exists
+            sighting_date = row.get('sighting_date')
             if pd.notna(sighting_date):
                 new_feature['attributes']['sighting_date_response'] = sighting_date.strftime('%Y-%m-%d')
+                new_feature['attributes']['sighting_date'] = sighting_date.strftime('%Y-%m-%d')
 
             # Handle 'unique_id' if it exists
             unique_id = row.get('unique_id')
@@ -458,23 +477,28 @@ def edit_ago_data(ago_records_for_update, new_records_for_ago, survey123_layer, 
             if pd.notna(chefs_confirmation_id):
                 new_feature['attributes']['chefs_confirmation_id'] = chefs_confirmation_id
 
-            # -----------------------------------------------------------------------------------------------------------------------------
-            # Not working: commented out for now 
-            # Handle 'survey_start' if it exists
-            # survey_start = row.get('survey_start')
-            # if pd.notna(survey_start):
-            #     new_feature['attributes']['survey_start_date_time'] = survey_start #.strftime('%Y-%m-%dT%H:%M:%SZ') ### PROBLEMS HERE
-            # -----------------------------------------------------------------------------------------------------------------------------
+            # remove columns that are not needed for AGOL
+            new_feature['attributes'].pop('confirmationId', "Key not found")
+            new_feature['attributes'].pop('survey_start', 'Key not found')
 
             # add the new feature to the list
             features_to_add.append(new_feature)
+
+            print(new_feature)
 
         # if there are features to add, append them to the AGOL feature layer
         if features_to_add:
             logging.info(f'..adding {len(features_to_add)} new feature(s) to AGOL')
             try:
                 add_response = survey123_layer.edit_features(adds=features_to_add)
-                logging.info(f'....AGOL add response: {add_response}')
+                try:
+                    if all(res.get('success') for res in add_response.get('addResults', [])):
+                        logging.info(f"..{len(features_to_add)} features added successfully.")
+                    else:
+                        logging.error("..some features failed to add.")
+                        logging.error(f"..full result: {add_response}")
+                except Exception as e:
+                    logging.exception(f"..unexpected error: {e}")                
             except Exception as e:
                 logging.error(f'....error adding features to AGOL: {e}')
 
@@ -508,6 +532,45 @@ def get_updated_ago_data(gis, ago_item_id, simpcw_item_id, query):
 
     return updated_ago_layer, updated_ago_properties, updated_ago_features, updated_ago_sdf, simpcw_sdf
 
+def remove_ago_duplicates_and_blanks(updated_ago_layer, updated_ago_sdf):
+    """
+    Removes any duplicate records from the AGOL feature layer
+    """
+    # list to hold duplicates
+    remove_oids = []
+
+    # filter dataframe for duplicate records and blank records
+    duplicate_records = updated_ago_sdf[updated_ago_sdf.duplicated(subset=['unique_id'])]
+    blank_records = updated_ago_sdf.loc[(updated_ago_sdf['unique_id'].notna()) & (updated_ago_sdf['chefs_confirmation_id'].isna())]
+
+    # merge the two dataframes
+    records_to_remove = pd.concat([duplicate_records, blank_records], ignore_index=True)
+
+    if not records_to_remove.empty:
+        logging.info(f'..found {len(records_to_remove)} records to remove from AGOL')
+
+        # iterate through duplicates and extract their unique_ids
+        for _, row in records_to_remove.iterrows():
+            # get the unique_id from the row
+            remove_oid = row['objectid']
+
+            # append the unique_id to the list
+            remove_oids.append(remove_oid)
+
+            records_to_remove.to_clipboard()
+
+        logging.info(f'..removing {len(remove_oids)} duplicate records from AGOL')
+        delete_result = updated_ago_layer.edit_features(deletes=str(remove_oids))
+
+        if all(res.get('success') for res in delete_result.get('deleteResults', [])):
+            logging.info(f'....{len(remove_oids)} duplicate records removed successfully')
+        else:
+            logging.error('....some duplicate records failed to delete')
+            logging.error(f'....full result: {delete_result}')
+
+    else:
+        logging.info('..no records to remove found')
+
 def clean_filename(filename: str) -> str:
     """
     Removes any invalid characters from date fields in AGO feature layer data 
@@ -520,7 +583,8 @@ def clean_filename(filename: str) -> str:
     invalid_chars = '<>:"/\\|?*'
 
     # clean the file name
-    clean_filename = ''.join('-' if c in invalid_chars else c for c in filename).rstrip('. ')
+    if filename is not None:
+        clean_filename = ''.join('-' if c in invalid_chars else c for c in filename).rstrip('. ')
 
     return clean_filename
 
