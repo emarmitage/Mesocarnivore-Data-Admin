@@ -1,4 +1,4 @@
-name: Badger Data Admin
+name: Badger Sightings Data Admin
 
 on:
   schedule:
