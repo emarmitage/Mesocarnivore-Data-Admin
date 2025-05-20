@@ -557,8 +557,6 @@ def remove_ago_duplicates_and_blanks(updated_ago_layer, updated_ago_sdf):
             # append the unique_id to the list
             remove_oids.append(remove_oid)
 
-            records_to_remove.to_clipboard()
-
         logging.info(f'..removing {len(remove_oids)} duplicate records from AGOL')
         delete_result = updated_ago_layer.edit_features(deletes=str(remove_oids))
 
