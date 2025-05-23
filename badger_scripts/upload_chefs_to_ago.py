@@ -41,7 +41,9 @@ def main():
     API_KEY = os.environ['CHEFS_API_KEY'] # api key
     BASE_URL = os.environ['CHEFS_BASE_URL']
     FORM_ID = os.environ['CHEFS_FORM_ID'] # form ID
-    VERSION_ID = os.environ['CHEFS_VERSION_ID'] # form version 12
+    # VERSION_ID = os.environ['CHEFS_VERSION_ID'] # form version 12
+    VERSION_13 = os.environ['CHEFS_VERSION_ID_13']
+    VERSION_12 = os.environ['CHEFS_VERSION_ID_12']
     REQUEST_FIELDS = "confirmationId,createdAt,first_name,last_name,email,sighting_date,sighting_type,sighting_type_other,number_badgers,badger_status,in_conflict,road_location,obs_type,family_at_burrow,location_type,ground_squirrels,additional_info,upload_image,image_permission,unique_id,sighting_location,latitude,longitude,point_accuracy,referral_source,social_media_source,referral_source_other"
     HTTP_POOL_MANAGER = urllib3.PoolManager()
 
@@ -72,8 +74,8 @@ def main():
     logging.info('\nConnecting to object storage')
     s3_connection = object_storage_connection(USERNAME, ENDPOINT, SECRET)
 
-    logging.info(f'\nReading CHEFS data for form version {VERSION_ID} to pandas dataframe')
-    chefs_df = chefs_data_api_request(HTTP_POOL_MANAGER, FORM_ID, VERSION_ID, API_KEY, BASE_URL, REQUEST_FIELDS)
+    logging.info(f'\nReading CHEFS data for form version {VERSION_12 and VERSION_13} to pandas dataframe')
+    chefs_df = chefs_data_api_request(HTTP_POOL_MANAGER, FORM_ID, VERSION_12, VERSION_13, API_KEY, BASE_URL, REQUEST_FIELDS)
 
     logging.info(f'\nGetting Survey123 data')
     survey123_item, survey123_layer, survey123_properties, survey123_df = get_ago_data(gis, AGO_ITEM_ID, QUERY)
@@ -156,9 +158,10 @@ def object_storage_connection(username, endpoint, secret):
     else:
         logging.error('..failed to connect to object storage')
 
-def chefs_data_api_request(http_pool_manager, form_id, version_id, api_key, base_url, request_fields):
+def chefs_data_api_request(http_pool_manager, form_id, version_12, version_13, api_key, base_url, request_fields):
 
-    form_metadata_url = f"{base_url}/{form_id}/versions/{version_id}/submissions/discover"
+    form_metadata_url_v12 = f"{base_url}/{form_id}/versions/{version_12}/submissions/discover"
+    form_metadata_url_v13 = f"{base_url}/{form_id}/versions/{version_13}/submissions/discover"
 
     get_form_submission_url = f"{base_url}/{form_id}/submissions"
 
@@ -171,22 +174,28 @@ def chefs_data_api_request(http_pool_manager, form_id, version_id, api_key, base
     fields = {"fields": request_fields}
 
     # make the request
-    response_metadata = http_pool_manager.request("GET", form_metadata_url, fields=fields, headers=headers)
+    response_metadata_v12 = http_pool_manager.request("GET", form_metadata_url_v12, fields=fields, headers=headers)
+    response_metadata_v13 = http_pool_manager.request("GET", form_metadata_url_v13, fields=fields, headers=headers)
     response_submissions = http_pool_manager.request("GET", get_form_submission_url, headers=headers)
 
     # response status
-    if response_metadata.status == 200:
+    if response_submissions.status == 200:
         logging.info('..successfully retrieved CHEFS data')
     else:
-        logging.error(f'..error retrieving CHEFS data: {response_metadata.status}')
+        logging.error(f'..error retrieving CHEFS data: {response_submissions.status}')
 
     # convert response to json
-    response_data_decode = json.loads(response_metadata.data.decode("utf-8"))
+    response_data_decode_v12 = json.loads(response_metadata_v12.data.decode("utf-8"))
+    response_data_decode_v13 = json.loads(response_metadata_v13.data.decode("utf-8"))
     response_submission_data = json.loads(response_submissions.data.decode("utf-8"))
 
     # convert response to pandas dataframe
-    response_data_df = pd.DataFrame(response_data_decode)
+    response_data_df_v12 = pd.DataFrame(response_data_decode_v12)
+    response_data_df_v13 = pd.DataFrame(response_data_decode_v13)
     response_submission_df = pd.DataFrame(response_submission_data)
+
+    # concat the two versions into one dataframe
+    response_data_df = pd.concat([response_data_df_v12, response_data_df_v13], axis=0, ignore_index=True)
 
     # merge dataframes to get the ConfirmationID and the CreatedAt fields
     merged_df = pd.merge(response_submission_df, response_data_df, left_on='submissionId', right_on='id')
