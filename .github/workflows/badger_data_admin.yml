@@ -46,7 +46,8 @@ jobs:
         CHEFS_API_KEY: ${{secrets.CHEFS_API_KEY}}
         CHEFS_BASE_URL: ${{secrets.CHEFS_BASE_URL}}
         CHEFS_FORM_ID: ${{secrets.CHEFS_FORM_ID}}
-        CHEFS_VERSION_ID: ${{secrets.CHEFS_VERSION_ID}}
+        CHEFS_VERSION_ID_12: ${{secrets.CHEFS_VERSION_ID_12}}
+        CHEFS_VERSION_ID_13: ${{secrets.CHEFS_VERSION_ID_13}}
         
       run: |
         # you may have to activate the environment before running the 
