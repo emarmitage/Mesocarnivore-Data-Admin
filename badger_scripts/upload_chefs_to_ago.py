@@ -432,15 +432,15 @@ def edit_ago_data(ago_records_for_update, new_records_for_ago, survey123_layer, 
 
                     print(updated_feature)
 
-                # update sighting_date_response
-                updated_feature['attributes']['sighting_date_response'] = row['sighting_date_y'].strftime('%Y-%m-%d')
-                updated_feature['attributes']['sighting_date'] = row['sighting_date_y'].strftime('%Y-%m-%d')
-
-                # update CHEFS confirmation ID
-                updated_feature['attributes']['chefs_confirmation_id'] = row.get('confirmationId')
-
-                # add the updated feature to the list
-                features_to_edit.append(updated_feature)
+                    # update sighting_date_response
+                    updated_feature['attributes']['sighting_date_response'] = row['sighting_date_y'].strftime('%Y-%m-%d')
+                    updated_feature['attributes']['sighting_date'] = row['sighting_date_y'].strftime('%Y-%m-%d')
+    
+                    # update CHEFS confirmation ID
+                    updated_feature['attributes']['chefs_confirmation_id'] = row.get('confirmationId')
+    
+                    # add the updated feature to the list
+                    features_to_edit.append(updated_feature)
 
         # if there are features to edit, update the feature layer
         if features_to_edit:
