@@ -420,6 +420,8 @@ def edit_ago_data(ago_records_for_update, new_records_for_ago, survey123_layer, 
                         column.replace('_y', ''): row[column] for column in df_record.columns if column.endswith("_y")
                     })
 
+                    print(updated_attributes)
+
                     updated_feature = {
                         "attributes" : updated_attributes,
                         "geometry": {
@@ -427,6 +429,8 @@ def edit_ago_data(ago_records_for_update, new_records_for_ago, survey123_layer, 
                             "y": row['latitude_y']
                         }   
                     }
+
+                    print(updated_feature)
 
                 # update sighting_date_response
                 updated_feature['attributes']['sighting_date_response'] = row['sighting_date_y'].strftime('%Y-%m-%d')
