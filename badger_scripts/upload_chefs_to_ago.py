@@ -442,14 +442,14 @@ def edit_ago_data(ago_records_for_update, new_records_for_ago, survey123_layer, 
 
                     print(updated_feature)
 
-        # if there are features to edit, update the feature layer
-        if features_to_edit:
-            logging.info(f'..updating {len(features_to_edit)} features in AGOL')
-            try: 
-                edit_response = survey123_layer.edit_features(updates=features_to_edit)
-                logging.info(f'....AGOL edit response: {edit_response}')
-            except Exception as e:
-                logging.error(f'....error updating AGOL: {e}')
+    # if there are features to edit, update the feature layer
+    if features_to_edit:
+        logging.info(f'..updating {len(features_to_edit)} features in AGOL')
+        try: 
+            edit_response = survey123_layer.edit_features(updates=features_to_edit)
+            logging.info(f'....AGOL edit response: {edit_response}')
+        except Exception as e:
+            logging.error(f'....error updating AGOL: {e}')
 
     # append only new CHEFS records to the feature layer
     if not new_records_for_ago.empty:
