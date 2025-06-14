@@ -97,12 +97,12 @@ def main():
         logging.info(f'\nGetting updated data from AGOL')
         updated_ago_layer, updated_ago_properties, updated_ago_features, updated_ago_sdf, simpcw_sdf = get_updated_ago_data(gis, AGO_ITEM_ID, SIMPCW_ITEM_ID, QUERY)
 
-        logging.info(f'\nCleaning AGOL data')
-        logging.info(f'..finding records to remove from AGOL - either blank or duplicate records')
-        remove_ago_duplicates_and_blanks(updated_ago_layer, updated_ago_sdf)
+        # logging.info(f'\nCleaning AGOL data')
+        # logging.info(f'..finding records to remove from AGOL - either blank or duplicate records')
+        # remove_ago_duplicates_and_blanks(updated_ago_layer, updated_ago_sdf)
 
-        logging.info(f'\nGetting updated data from AGOL after removing duplicates and blanks')
-        updated_ago_layer, updated_ago_properties, updated_ago_features, updated_ago_sdf, simpcw_sdf = get_updated_ago_data(gis, AGO_ITEM_ID, SIMPCW_ITEM_ID, QUERY)
+        # logging.info(f'\nGetting updated data from AGOL after removing duplicates and blanks')
+        # updated_ago_layer, updated_ago_properties, updated_ago_features, updated_ago_sdf, simpcw_sdf = get_updated_ago_data(gis, AGO_ITEM_ID, SIMPCW_ITEM_ID, QUERY)
 
         logging.info(f'\nRenaming AGO feature layer attachments')
         rename_attachments(updated_ago_layer, updated_ago_properties, updated_ago_features)
