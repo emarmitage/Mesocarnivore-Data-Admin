@@ -32,6 +32,7 @@ import sys
 from minio import Minio
 from  minio.error import S3Error
 from copy import deepcopy
+import json
 
 def main():
 
@@ -58,7 +59,7 @@ def main():
     SECRET = os.environ['OBJ_STORE_API_KEY']
     S3_BUCKET = os.environ['BADGER_S3_BUCKET']
 
-        # current year for naming & querying
+    # current year for naming & querying
     year = pd.to_datetime('today').year
 
     QUERY = f""" CreationDate >= '{year}-01-01' AND unique_id IS NOT NULL """
@@ -97,12 +98,12 @@ def main():
         logging.info(f'\nGetting updated data from AGOL')
         updated_ago_layer, updated_ago_properties, updated_ago_features, updated_ago_sdf, simpcw_sdf = get_updated_ago_data(gis, AGO_ITEM_ID, SIMPCW_ITEM_ID, QUERY)
 
-        # logging.info(f'\nCleaning AGOL data')
-        # logging.info(f'..finding records to remove from AGOL - either blank or duplicate records')
-        # remove_ago_duplicates_and_blanks(updated_ago_layer, updated_ago_sdf)
+        logging.info(f'\nCleaning AGOL data')
+        logging.info(f'..finding records to remove from AGOL - either blank or duplicate records')
+        remove_ago_duplicates_and_blanks(updated_ago_layer, updated_ago_sdf)
 
-        # logging.info(f'\nGetting updated data from AGOL after removing duplicates and blanks')
-        # updated_ago_layer, updated_ago_properties, updated_ago_features, updated_ago_sdf, simpcw_sdf = get_updated_ago_data(gis, AGO_ITEM_ID, SIMPCW_ITEM_ID, QUERY)
+        logging.info(f'\nGetting updated data from AGOL after removing duplicates and blanks')
+        updated_ago_layer, updated_ago_properties, updated_ago_features, updated_ago_sdf, simpcw_sdf = get_updated_ago_data(gis, AGO_ITEM_ID, SIMPCW_ITEM_ID, QUERY)
 
         logging.info(f'\nRenaming AGO feature layer attachments')
         rename_attachments(updated_ago_layer, updated_ago_properties, updated_ago_features)
@@ -403,25 +404,24 @@ def edit_ago_data(ago_records_for_update, new_records_for_ago, survey123_layer, 
     if not ago_records_for_update.empty:
         # iterate through the features
         for feature in original_features:
-
-            # get the unique_id from the feature
             unique_id = feature.attributes['unique_id']
 
             # get the corresponding record from ago_records_for_update
             df_record = ago_records_for_update[ago_records_for_update['unique_id'] == unique_id]
-
             # update the feature's geometry and attributes
             if not df_record.empty:
                 for _, row in df_record.iterrows():
-
-                    updated_attributes = feature.attributes.copy()
+                    # Always use a fresh copy of attributes for each update
+                    # updated_attributes = feature.attributes.copy()
+                    updated_attributes = deepcopy(feature.attributes)
 
                     updated_attributes.update({
                         column.replace('_y', ''): row[column] for column in df_record.columns if column.endswith("_y")
                     })
+                    # Convert nan to None
+                    updated_attributes = convert_nan_to_none(updated_attributes)
 
-                    print(updated_attributes)
-
+                    # create updated feature
                     updated_feature = {
                         "attributes" : updated_attributes,
                         "geometry": {
@@ -429,18 +429,28 @@ def edit_ago_data(ago_records_for_update, new_records_for_ago, survey123_layer, 
                             "y": row['latitude_y']
                         }   
                     }
-
                     # update sighting_date_response
                     updated_feature['attributes']['sighting_date_response'] = row['sighting_date_y'].strftime('%Y-%m-%d')
                     updated_feature['attributes']['sighting_date'] = row['sighting_date_y'].strftime('%Y-%m-%d')
-    
+
                     # update CHEFS confirmation ID
                     updated_feature['attributes']['chefs_confirmation_id'] = row.get('confirmationId')
-    
-                    # add the updated feature to the list
-                    features_to_edit.append(updated_feature)
 
-                    print(updated_feature)
+                    updated_feature_copy = deepcopy(updated_feature)
+                    updated_feature_copy['attributes'].update(updated_attributes)
+
+                    # if updated_feature_copy not in features_to_edit:
+                    #     # add the updated feature to the list
+                    features_to_edit.append(updated_feature_copy)
+
+    # Test for serialization issues that could cause circular reference errors
+    # for i, test_feature in enumerate(features_to_edit):
+    #     try:
+    #         json.dumps(test_feature)
+    #     except ValueError as e:
+    #         logging.error(f"Serialization error in feature index {i}: {e}")
+    #         print(f"Problematic feature at index {i}:\n{test_feature}")
+
 
     # if there are features to edit, update the feature layer
     if features_to_edit:
@@ -473,6 +483,8 @@ def edit_ago_data(ago_records_for_update, new_records_for_ago, survey123_layer, 
                     "y": row['latitude']
                 }
             }
+            # Convert nan to None
+            new_feature['attributes'] = convert_nan_to_none(new_feature['attributes'])
 
             # Handle 'sighting_date' if it exists
             sighting_date = row.get('sighting_date')
@@ -489,6 +501,12 @@ def edit_ago_data(ago_records_for_update, new_records_for_ago, survey123_layer, 
             chefs_confirmation_id = row.get('confirmationId')
             if pd.notna(chefs_confirmation_id):
                 new_feature['attributes']['chefs_confirmation_id'] = chefs_confirmation_id
+
+            # Handle 'family_at_burrow' if it exists
+            family_at_burrow = row.get('family_at_burrow')
+            print(family_at_burrow)
+            if pd.notna(family_at_burrow):
+                new_feature['attributes']['family_at_burrow'] = float(family_at_burrow)
 
             # remove columns that are not needed for AGOL
             new_feature['attributes'].pop('confirmationId', "Key not found")
@@ -597,10 +615,7 @@ def clean_filename(filename: str) -> str:
     if filename is not None:
         clean_filename = ''.join('-' if c in invalid_chars else c for c in filename).rstrip('. ')
 
-        return clean_filename
-
-    else:
-        return filename
+    return clean_filename
 
 def download_attachment(ago_flayer, oid, attachment_id):
     """
@@ -842,6 +857,13 @@ def save_to_object_storage(s3_bucket, ostore_path, excel_path, s3_connection):
 
     except Exception as e:
         logging.error(f"..unexpected error uploading file {os.path.basename(excel_path)}: {e}")
+
+def convert_nan_to_none(d):
+
+    return {
+        k: None if pd.isna(v) else v
+        for k, v in d.items()
+    }
 
 if __name__ == "__main__":
     main()
