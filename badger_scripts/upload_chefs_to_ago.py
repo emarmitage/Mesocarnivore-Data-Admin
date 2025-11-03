@@ -42,7 +42,7 @@ def main():
     API_KEY = os.environ['CHEFS_API_KEY'] # api key
     BASE_URL = os.environ['CHEFS_BASE_URL']
     FORM_ID = os.environ['CHEFS_FORM_ID'] # form ID
-    # VERSION_ID = os.environ['CHEFS_VERSION_ID'] # form version 12
+    VERSION_14 = os.environ['CHEFS_VERSION_ID_14']
     VERSION_13 = os.environ['CHEFS_VERSION_ID_13']
     VERSION_12 = os.environ['CHEFS_VERSION_ID_12']
     REQUEST_FIELDS = "confirmationId,createdAt,first_name,last_name,email,sighting_date,sighting_type,sighting_type_other,number_badgers,badger_status,in_conflict,road_location,obs_type,family_at_burrow,location_type,ground_squirrels,additional_info,upload_image,image_permission,unique_id,sighting_location,latitude,longitude,point_accuracy,referral_source,social_media_source,referral_source_other"
@@ -75,8 +75,8 @@ def main():
     logging.info('\nConnecting to object storage')
     s3_connection = object_storage_connection(USERNAME, ENDPOINT, SECRET)
 
-    logging.info(f'\nReading CHEFS data for form version {VERSION_12 and VERSION_13} to pandas dataframe')
-    chefs_df = chefs_data_api_request(HTTP_POOL_MANAGER, FORM_ID, VERSION_12, VERSION_13, API_KEY, BASE_URL, REQUEST_FIELDS)
+    logging.info(f'\nReading CHEFS data for form version {VERSION_12, VERSION_13, VERSION_14} to pandas dataframe')
+    chefs_df = chefs_data_api_request(HTTP_POOL_MANAGER, FORM_ID, VERSION_12, VERSION_13, VERSION_14, API_KEY, BASE_URL, REQUEST_FIELDS)
 
     logging.info(f'\nGetting Survey123 data')
     survey123_item, survey123_layer, survey123_properties, survey123_df = get_ago_data(gis, AGO_ITEM_ID, QUERY)
@@ -159,10 +159,11 @@ def object_storage_connection(username, endpoint, secret):
     else:
         logging.error('..failed to connect to object storage')
 
-def chefs_data_api_request(http_pool_manager, form_id, version_12, version_13, api_key, base_url, request_fields):
+def chefs_data_api_request(http_pool_manager, form_id, version_12, version_13, version_14, api_key, base_url, request_fields):
 
     form_metadata_url_v12 = f"{base_url}/{form_id}/versions/{version_12}/submissions/discover"
     form_metadata_url_v13 = f"{base_url}/{form_id}/versions/{version_13}/submissions/discover"
+    form_metadata_url_v14 = f"{base_url}/{form_id}/versions/{version_14}/submissions/discover"
 
     get_form_submission_url = f"{base_url}/{form_id}/submissions"
 
@@ -177,6 +178,7 @@ def chefs_data_api_request(http_pool_manager, form_id, version_12, version_13, a
     # make the request
     response_metadata_v12 = http_pool_manager.request("GET", form_metadata_url_v12, fields=fields, headers=headers)
     response_metadata_v13 = http_pool_manager.request("GET", form_metadata_url_v13, fields=fields, headers=headers)
+    response_metadata_v14 = http_pool_manager.request("GET", form_metadata_url_v14, fields=fields, headers=headers)
     response_submissions = http_pool_manager.request("GET", get_form_submission_url, headers=headers)
 
     # response status
@@ -188,15 +190,17 @@ def chefs_data_api_request(http_pool_manager, form_id, version_12, version_13, a
     # convert response to json
     response_data_decode_v12 = json.loads(response_metadata_v12.data.decode("utf-8"))
     response_data_decode_v13 = json.loads(response_metadata_v13.data.decode("utf-8"))
+    response_data_decode_v14 = json.loads(response_metadata_v14.data.decode("utf-8"))
     response_submission_data = json.loads(response_submissions.data.decode("utf-8"))
 
     # convert response to pandas dataframe
     response_data_df_v12 = pd.DataFrame(response_data_decode_v12)
     response_data_df_v13 = pd.DataFrame(response_data_decode_v13)
+    response_data_df_v14 = pd.DataFrame(response_data_decode_v14)
     response_submission_df = pd.DataFrame(response_submission_data)
 
     # concat the two versions into one dataframe
-    response_data_df = pd.concat([response_data_df_v12, response_data_df_v13], axis=0, ignore_index=True)
+    response_data_df = pd.concat([response_data_df_v12, response_data_df_v13, response_data_df_v14], axis=0, ignore_index=True)
 
     # merge dataframes to get the ConfirmationID and the CreatedAt fields
     merged_df = pd.merge(response_submission_df, response_data_df, left_on='submissionId', right_on='id')
@@ -335,6 +339,14 @@ def format_data_for_ago(df):
             'badger_road_mortality': 'Badger road mortality',
             'other': 'Other'
         },
+        'referral_source_y': {
+            'internet_search': 'Internet Search',
+            'social_media': 'Social Media',
+            'colleague_family_friend': 'Colleague, family member, or friend',
+            'rapp_line': 'Report All Poachers and Polluters (RAPP) Line',
+            'program_partner': 'Program partner',
+            'other': 'other'
+        },
         'location_type_y': {
             'public_land_or_park': 'Public Land or Park',
             'private_property': 'Private Property',
@@ -359,11 +371,18 @@ def format_data_for_ago(df):
         }
     }
 
+    max_lengths = {
+        'referral_source_other_y': 255,
+        'additional_info_y': 2000,
+        'sighting_type_other': 255
+    }
+
     # convert CHEFS date to datetime format
     if not df.empty:
         logging.info('....formatting CHEFS data for AGOL')
         # convert to datetime format
-        df['sighting_date_y'] = pd.to_datetime(df['sighting_date_y'], errors='coerce', utc=True)
+        # df['sighting_date_y'] = pd.to_datetime(df['sighting_date_y'], format='%Y-%m-%d %H:%M:%S', errors='coerce', utc=True)
+        df['sighting_date_y'] = pd.to_datetime(df['sighting_date_y'], format='%Y-%m-%d', utc=True)
 
         for column, data in df.items():
             if column in map_dict.keys():
@@ -373,6 +392,11 @@ def format_data_for_ago(df):
             # Convert blank image_permission values to None
             if column == "image_permission_y":
                 df[column] = df[column].apply(lambda x: None if pd.isna(x) or x == "" else x)
+
+        # truncate text fields to max length
+        for field, max_length in max_lengths.items():
+            if field in df.columns:
+                df[field] = df[field].apply(lambda x: x[:max_length] if isinstance(x, str) else x)     
 
     else:
         logging.info('....no new records to update')
@@ -490,7 +514,7 @@ def edit_ago_data(ago_records_for_update, new_records_for_ago, survey123_layer, 
             sighting_date = row.get('sighting_date')
             if pd.notna(sighting_date):
                 new_feature['attributes']['sighting_date_response'] = sighting_date.strftime('%Y-%m-%d')
-                new_feature['attributes']['sighting_date'] = sighting_date.strftime('%Y-%m-%d')
+                new_feature['attributes']['sighting_date'] = sighting_date.strftime('%Y-%m-%d %H:%M:%S')
 
             # Handle 'unique_id' if it exists
             unique_id = row.get('unique_id')
@@ -504,7 +528,6 @@ def edit_ago_data(ago_records_for_update, new_records_for_ago, survey123_layer, 
 
             # Handle 'family_at_burrow' if it exists
             family_at_burrow = row.get('family_at_burrow')
-            print(family_at_burrow)
             if pd.notna(family_at_burrow):
                 new_feature['attributes']['family_at_burrow'] = float(family_at_burrow)
 
@@ -512,22 +535,36 @@ def edit_ago_data(ago_records_for_update, new_records_for_ago, survey123_layer, 
             new_feature['attributes'].pop('confirmationId', "Key not found")
             new_feature['attributes'].pop('survey_start', 'Key not found')
 
+            # remove fields with None values
+            new_feature['attributes'] = {
+                k: v for k, v in new_feature['attributes'].items() if v is not None
+            }
+
             # add the new feature to the list
             features_to_add.append(new_feature)
-
-            print(new_feature)
 
         # if there are features to add, append them to the AGOL feature layer
         if features_to_add:
             logging.info(f'..adding {len(features_to_add)} new feature(s) to AGOL')
             try:
-                add_response = survey123_layer.edit_features(adds=features_to_add)
+                add_response = survey123_layer.edit_features(adds=features_to_add, rollback_on_failure=False)
                 try:
                     if all(res.get('success') for res in add_response.get('addResults', [])):
                         logging.info(f"..{len(features_to_add)} features added successfully.")
                     else:
                         logging.error("..some features failed to add.")
-                        logging.error(f"..full result: {add_response}")
+                        for idx, result in enumerate(add_response.get('addResults', [])):
+                            if not result.get('success'):
+                                error = result.get('error', {})
+                                logging.error(f"Feature failed to add: {error}")
+                                logging.error(f"Failed feature unique_id: {result.get('uniqueId')}")
+                                if idx < len(features_to_add):
+                                    failed_feature = features_to_add[idx]
+                                    logging.error("Failed feature details:")
+                                    logging.error(f"Geometry: {failed_feature.get('geometry')}")
+                                    logging.error("Attributes:")
+                                    for k, v in failed_feature.get('attributes', {}).items():
+                                        logging.error(f"{k}: {v} (type: {type(v).__name__})")
                 except Exception as e:
                     logging.exception(f"..unexpected error: {e}")                
             except Exception as e:
