@@ -42,7 +42,7 @@ def main():
     API_KEY = os.environ['CHEFS_API_KEY'] # api key
     BASE_URL = os.environ['CHEFS_BASE_URL']
     FORM_ID = os.environ['CHEFS_FORM_ID'] # form ID
-    VERSION_14 = os.environ['CHEFS_VERSION_ID_14']
+    VERSION_14 = os.environ['CHEFS_VERSION_ID_14'] 
     VERSION_13 = os.environ['CHEFS_VERSION_ID_13']
     VERSION_12 = os.environ['CHEFS_VERSION_ID_12']
     REQUEST_FIELDS = "confirmationId,createdAt,first_name,last_name,email,sighting_date,sighting_type,sighting_type_other,number_badgers,badger_status,in_conflict,road_location,obs_type,family_at_burrow,location_type,ground_squirrels,additional_info,upload_image,image_permission,unique_id,sighting_location,latitude,longitude,point_accuracy,referral_source,social_media_source,referral_source_other"
@@ -58,6 +58,62 @@ def main():
     ENDPOINT = os.environ['OBJ_STORE_HOST']
     SECRET = os.environ['OBJ_STORE_API_KEY']
     S3_BUCKET = os.environ['BADGER_S3_BUCKET']
+
+    new_column_names = {
+        "unique_id": "unique_id",
+        "chefs_confirmation_id": "chefs_confirmation_id",
+        "first_name": "first_name",
+        "last_name": "last_name",
+        "email": "email",
+        "sighting_date_response": "sighting_date",
+        "sighting_type": "sighting_type",
+        "sighting_type_other": "sighting_type_other",
+        "number_badgers": "number_badgers",
+        "badger_status": "badger_status",
+        "in_conflict": "in_conflict",
+        "road_location": "road_location",
+        "obs_type": "obs_type",
+        "family_at_burrow": "family_at_burrow",
+        "location_type": "location_type",
+        "ground_squirrels": "ground_squirrels",
+        "additional_info": "additional_info",
+        "photo_name": "photo_name",
+        "image_permission": "image_permission",
+        "latitude": "latitude",
+        "longitude": "longitude",
+        "point_accuracy": "point_accuracy",
+        "referral_source": "referral_source",
+        "social_media_source": "social_media_source",
+        "referral_source_other": "referral_source_other",
+    }
+
+    new_column_names_simpcw = {
+        "unique_id": "Unique ID",
+        "chefs_confirmation_id": "CHEFS Confirmation ID",
+        "first_name": "First Name",
+        "last_name": "Last Name",
+        "email": "Email",
+        "sighting_date_response": "Sighting Date",
+        "sighting_type": "Sighting Type",
+        "sighting_type_other": "Sighting Type Other",
+        "number_badgers": "How Many Badgers Did You See?",
+        "badger_status": "Was the badger alive or dead?",
+        "in_conflict": "Are you reporting a badger in conflict where public safety is at risk?",
+        "road_location": "Are you reporting the location of:",
+        "obs_type": "Types of Observations",
+        "family_at_burrow": "If you are reporting a badger family at a burrow, how many years have you seen them at this location?",
+        "location_type": "Badger Location Type:",
+        "ground_squirrels": "Are there ground squirrels in this area?",
+        "additional_info": "Describe the Badger Sighting:",
+        "photo_name": "Photo Name(s)",
+        "image_permission": "Would you like to give BC Badgers permission to use your photo(s) for program materials and this website?",
+        "latitude": "Latitude",
+        "longitude": "Longitude",
+        "point_accuracy": "How accurate is the location on the map above?",
+        "referral_source": "How did you hear about the provincial Report a Badger Sightings program?",
+        "social_media_source": "Specify Social Media:",
+        "referral_source_other": "Specify Other:",
+    }
 
     # current year for naming & querying
     year = pd.to_datetime('today').year
@@ -111,7 +167,7 @@ def main():
         logging.info(f'\nCreating excel report for the entire {year} badger sightings dataset')
         ago_file_name = "badger_sightings_report"
         ago_ostore_path = "badger_excel_report"
-        excel_path = create_excel_report(updated_ago_sdf, chefs_df, flayer_drop_columns, chefs_keep_columns, year, ago_file_name)
+        excel_path = create_excel_report(updated_ago_sdf, chefs_df, flayer_drop_columns, chefs_keep_columns, year, ago_file_name, new_column_names)
 
         logging.info(f'\nSaving full excel report to object storage')
         save_to_object_storage(S3_BUCKET, ago_ostore_path, excel_path, s3_connection)
@@ -120,7 +176,7 @@ def main():
             logging.info(f'\nCreating excel report for Simpcw Nation')
             simpcw_file_name = "simpcw_badger_sightings_report"
             simpcw_ostore_path = r"simpcw_badger_data/simpcw_badger_excel_report"
-            simpcw_excel_path = create_excel_report(simpcw_sdf, chefs_df, flayer_drop_columns, chefs_keep_columns, year, simpcw_file_name)
+            simpcw_excel_path = create_excel_report(simpcw_sdf, chefs_df, flayer_drop_columns, chefs_keep_columns, year, simpcw_file_name, new_column_names_simpcw)
 
             logging.info(f'\nSaving Simpcw excel report to object storage')
             save_to_object_storage(S3_BUCKET, simpcw_ostore_path, simpcw_excel_path, s3_connection)
@@ -382,7 +438,7 @@ def format_data_for_ago(df):
         logging.info('....formatting CHEFS data for AGOL')
         # convert to datetime format
         # df['sighting_date_y'] = pd.to_datetime(df['sighting_date_y'], format='%Y-%m-%d %H:%M:%S', errors='coerce', utc=True)
-        df['sighting_date_y'] = pd.to_datetime(df['sighting_date_y'], format='%Y-%m-%d', utc=True)
+        df['sighting_date_y'] = pd.to_datetime(df['sighting_date_y'], format='mixed', utc=True)
 
         for column, data in df.items():
             if column in map_dict.keys():
@@ -783,7 +839,7 @@ def rename_attachments(ago_flayer, flayer_properties, flayer_data):
         logging.info(f'..updating {len(features_for_update)} feature attachment names')
         ago_flayer.edit_features(updates=features_for_update)
 
-def create_excel_report(ago_sdf, chefs_df, flayer_drop_columns, chefs_keep_columns, file_name, year):
+def create_excel_report(ago_sdf, chefs_df, flayer_drop_columns, chefs_keep_columns, file_name, year, new_column_names):
     """
     Clean the dataframe and create excel report
     """
@@ -813,41 +869,15 @@ def create_excel_report(ago_sdf, chefs_df, flayer_drop_columns, chefs_keep_colum
     chefs_df_clean['unique_id'] = chefs_df_clean['unique_id'].astype(str)
     ago_sdf_clean['unique_id'] = ago_sdf_clean['unique_id'].astype(str)
 
-    # join dataframes - need to use pd concat or deal with datatypes
+    # join dataframes
     logging.info('..joining AGOL and CHEFS dataframes')
     excel_df = pd.concat([chefs_df_clean, ago_sdf_clean], axis=1)
 
+    # drop rows with null values under 'sighting_type'
+    excel_df = excel_df[pd.notna(excel_df['sighting_type'])]
+
     # drop extra unique ID column
     excel_df = excel_df.loc[:, ~excel_df.columns.duplicated()].copy()
-
-    # rename columns
-    new_column_names = {
-        "unique_id": "Unique ID",
-        "chefs_confirmation_id": "CHEFS Confirmation ID",
-        "first_name": "First Name",
-        "last_name": "Last Name",
-        "email": "Email",
-        "sighting_date_response": "Sighting Date",
-        "sighting_type": "Sighting Type",
-        "sighting_type_other": "Sighting Type Other",
-        "number_badgers": "How Many Badgers Did You See?",
-        "badger_status": "Was the badger alive or dead?",
-        "in_conflict": "Are you reporting a badger in conflict where public safety is at risk?",
-        "road_location": "Are you reporting the location of:",
-        "obs_type": "Types of Observations",
-        "family_at_burrow": "Badger Location Type:",
-        "location_type": "If you are reporting a badger family at a burrow, how many years have you seen them at this location?",
-        "ground_squirrels": "Are there ground squirrels in this area?",
-        "additional_info": "Describe the Badger Sighting:",
-        "photo_name": "Photo Name(s)",
-        "image_permission": "Would you like to give BC Badgers permission to use your photo(s) for program materials and this website?",
-        "latitude": "Latitude",
-        "longitude": "Longitude",
-        "point_accuracy": "How accurate is the location on the map above?",
-        "referral_source": "How did you hear about the provincial Report a Badger Sightings program?",
-        "social_media_source": "Specify Social Media:",
-        "referral_source_other": "Specify Other:",
-    }
 
     # reorder columns
     column_order = []
