@@ -5,8 +5,8 @@ channels:
   - defaults
 dependencies:
   - python=3.11
-  - arcgis
-  - minio
-  - pandas
-  - openpyxl
-  - urllib3
+  - arcgis=2.4.0.1
+  - minio=7.1.0
+  - pandas=2.0.2
+  - openpyxl=3.1.5
+  - urllib3=2.3.0
