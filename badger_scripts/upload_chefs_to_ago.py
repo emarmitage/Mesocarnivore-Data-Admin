@@ -40,7 +40,7 @@ def main():
     logging.basicConfig(level=logging.INFO, format="%(message)s")
 
     API_KEY = os.environ['CHEFS_API_KEY'] # api key
-    BASE_URL = os.environ['CHEFS_BASE_URL']
+    BASE_URL = 'https://submit.digital.gov.bc.ca/app/api/v1/forms'
     FORM_ID = os.environ['CHEFS_FORM_ID'] # form ID
     VERSION_14 = os.environ['CHEFS_VERSION_ID_14'] 
     VERSION_13 = os.environ['CHEFS_VERSION_ID_13']
@@ -51,9 +51,9 @@ def main():
     # input parameters
     AGO_USER = os.environ['AGO_USER']
     AGO_PASS = os.environ['AGO_PASS']
-    MAPHUB_URL = os.environ['MAPHUB_URL']
-    AGO_ITEM_ID = os.environ['BADGER_SIGHTINGS_AGO_ITEM']
-    SIMPCW_ITEM_ID = os.environ['SIMPCW_BADGER_SIGHTINGS_AGO_ITEM']
+    MAPHUB_URL = 'https://governmentofbc.maps.arcgis.com/home'
+    AGO_ITEM_ID = 'fa6cde2315764bc0b19af0d78cee5047'
+    SIMPCW_ITEM_ID = '4eaca86f5fbd4cafbea89ac60be157d3'
     USERNAME = os.environ['OBJ_STORE_USER']
     ENDPOINT = os.environ['OBJ_STORE_HOST']
     SECRET = os.environ['OBJ_STORE_API_KEY']
